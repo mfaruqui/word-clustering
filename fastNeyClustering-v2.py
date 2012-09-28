@@ -201,10 +201,12 @@ for line in open(dataFileName,'r'):
         except KeyError:
             prevWordDict[w2] = [w1]
  
-# Put top numClusInit-1 words into their own cluster
-# Put the rest of the words into a single cluster
+
 wordsInClusDict = {}
 wordToClusDict = {}
+
+# Put top numClusInit-1 words into their own cluster
+# Put the rest of the words into a single cluster
 insertedClus = 0
 for key, val in sorted(wordDict.items(), key=itemgetter(1), reverse=True):
     if insertedClus == numClusInit:
@@ -217,7 +219,9 @@ for key, val in sorted(wordDict.items(), key=itemgetter(1), reverse=True):
         wordsInClusDict[insertedClus] = [key]
         wordToClusDict[key] = insertedClus
         
-        insertedClus += 1        
+        insertedClus += 1
+        
+# Put words into clusters in a round-robin fashion
         
 # Get initial cluster unigram [n(C)] 
 clusUniCount = {}

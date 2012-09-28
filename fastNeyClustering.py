@@ -107,7 +107,7 @@ clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
                try:
                    val = biCount[(c2, c1)]
                    if val != 0 and c1 != c2:
-                       newPerplex -= val * log( val )   
+                       newPerplex -= val * log( val )
                except KeyError:
                    pass
         
@@ -253,7 +253,7 @@ while (wordsExchanged == 1):
         for possibleNewClass in clusUniCount.keys():
             
             if possibleNewClass != origClass:
-                possiblePerplex = calcTentativePerplex(origPerplex, word, origClass, tempNewClass,\
+                possiblePerplex = calcTentativePerplex(origPerplex, word, origClass, possibleNewClass,\
                 clusUniCount, clusBiCount, wordToClusDict, wordDict, bigramDict,
                 nextWordDict, prevWordDict)
                 

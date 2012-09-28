@@ -7,6 +7,86 @@ import sys
 from operator import itemgetter
 from math import log
 
+def readInputFile(inputFileName):
+    
+    wordDict = {}
+    bigramDict = {}
+
+    # Stores the list of words next to a given word
+    nextWordDict = {}
+    # Stores the list of words appearing before a given word
+    prevWordDict = {}
+    
+    for line in open(inputFileName,'r'):
+        line = line.strip()
+    
+        try:
+            w, num = line.split()
+            wordDict[w] = int(num)
+        except:
+            w1, w2, num = line.split()
+            bigramDict[(w1, w2)] = int(num)
+        
+            try:
+                nextWordDict[w1].append(w2)
+            except KeyError:
+                nextWordDict[w1] = [w2]
+        
+            try:
+                prevWordDict[w2].append(w1)
+            except KeyError:
+                prevWordDict[w2] = [w1]
+                
+    return wordDict, bigramDict, nextWordDict, prevWordDict
+    
+def formInitialClusters(numClusInit, wordDict):
+    
+    wordsInClusDict = {}
+    wordToClusDict = {}
+    
+    # Put top numClusInit-1 words into their own cluster
+    # Put the rest of the words into a single cluster
+    insertedClus = 0
+    for key, val in sorted(wordDict.items(), key=itemgetter(1), reverse=True):
+        if insertedClus == numClusInit:
+            wordToClusDict[key] = insertedClus
+            try:
+                wordsInClusDict[insertedClus].append(key)
+            except KeyError:
+                wordsInClusDict[insertedClus] = [key]
+        else:
+            wordsInClusDict[insertedClus] = [key]
+            wordToClusDict[key] = insertedClus
+        
+            insertedClus += 1
+            
+    return wordToClusDict, wordsInClusDict
+    
+def getClusterCounts(wordToClusDict, wordsInClusDict, wordDict, bigramDict):
+    
+    # Get initial cluster unigram [n(C)] 
+    clusUniCount = {}
+    # Get initial bigram counts [n(C2,C1)]   
+    clusBiCount = {}
+    
+    for word in wordDict.keys():
+        clusNum = wordToClusDict[word]
+        try:
+            clusUniCount[clusNum] += wordDict[word]
+        except KeyError:
+            clusUniCount[clusNum] = wordDict[word]
+    
+
+    for (w1, w2) in bigramDict.keys():
+        c1 = wordToClusDict[w1]
+        c2 = wordToClusDict[w2]
+        try:
+            clusBiCount[(c1, c2)] += bigramDict[(w1, w2)]
+        except KeyError:
+            clusBiCount[(c1, c2)] = bigramDict[(w1, w2)]
+            
+    return clusUniCount, clusBiCount
+
 # Calculates perplexity given the uni and bigram distribution of clusters
 # Eq4 in Och 2003
 def calcPerplexity(uniCount, biCount):
@@ -164,86 +244,6 @@ def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
        wordsInClusDict[tempNewClass].append(wordToBeShifted)
        
        return
-       
-def readInputFile(inputFileName):
-    
-    wordDict = {}
-    bigramDict = {}
-
-    # Stores the list of words next to a given word
-    nextWordDict = {}
-    # Stores the list of words appearing before a given word
-    prevWordDict = {}
-    
-    for line in open(inputFileName,'r'):
-        line = line.strip()
-    
-        try:
-            w, num = line.split()
-            wordDict[w] = int(num)
-        except:
-            w1, w2, num = line.split()
-            bigramDict[(w1, w2)] = int(num)
-        
-            try:
-                nextWordDict[w1].append(w2)
-            except KeyError:
-                nextWordDict[w1] = [w2]
-        
-            try:
-                prevWordDict[w2].append(w1)
-            except KeyError:
-                prevWordDict[w2] = [w1]
-                
-    return wordDict, bigramDict, nextWordDict, prevWordDict
-    
-def formInitialClusters(numClusInit, wordDict):
-    
-    wordsInClusDict = {}
-    wordToClusDict = {}
-    
-    # Put top numClusInit-1 words into their own cluster
-    # Put the rest of the words into a single cluster
-    insertedClus = 0
-    for key, val in sorted(wordDict.items(), key=itemgetter(1), reverse=True):
-        if insertedClus == numClusInit:
-            wordToClusDict[key] = insertedClus
-            try:
-                wordsInClusDict[insertedClus].append(key)
-            except KeyError:
-                wordsInClusDict[insertedClus] = [key]
-        else:
-            wordsInClusDict[insertedClus] = [key]
-            wordToClusDict[key] = insertedClus
-        
-            insertedClus += 1
-            
-    return wordToClusDict, wordsInClusDict
-    
-def getClusterCounts(wordToClusDict, wordsInClusDict, wordDict, bigramDict):
-    
-    # Get initial cluster unigram [n(C)] 
-    clusUniCount = {}
-    # Get initial bigram counts [n(C2,C1)]   
-    clusBiCount = {}
-    
-    for word in wordDict.keys():
-        clusNum = wordToClusDict[word]
-        try:
-            clusUniCount[clusNum] += wordDict[word]
-        except KeyError:
-            clusUniCount[clusNum] = wordDict[word]
-    
-
-    for (w1, w2) in bigramDict.keys():
-        c1 = wordToClusDict[w1]
-        c2 = wordToClusDict[w2]
-        try:
-            clusBiCount[(c1, c2)] += bigramDict[(w1, w2)]
-        except KeyError:
-            clusBiCount[(c1, c2)] = bigramDict[(w1, w2)]
-            
-    return clusUniCount, clusBiCount
 
 # Implementation fo Och 1999 clustering using the     
 # algorithm of Martin, Liermann, Ney 1998    
