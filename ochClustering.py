@@ -88,7 +88,6 @@ def getClusterCounts(wordToClusDict, wordsInClusDict, wordDict, bigramDict):
         clusNum = wordToClusDict[word]
         clusUniCount[clusNum] += wordDict[word]
     
-
     for (w1, w2) in bigramDict.keys():
         c1 = wordToClusDict[w1]
         c2 = wordToClusDict[w2]
@@ -329,8 +328,8 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--type", type=int, choices=[0, 1], default=0,
                         help="type of cluster initialization")
                         
-                        
     args = parser.parse_args()
+    
     inputFileName = args.inputfile
     numClusInit = args.numclus
     outputFileName = args.outputfile
