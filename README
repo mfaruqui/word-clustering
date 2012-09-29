@@ -1,1 +1,3 @@
-My awesome word clustering program
+This repository contains program for unsupervised word clustering.
+
+ohClustering.py -- implements clustering of Och, 2003 using the exchange algorithm given in Martin, Liermann, Ney 1998
