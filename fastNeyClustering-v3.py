@@ -6,6 +6,7 @@
 import sys
 from operator import itemgetter
 from math import log
+import argparse
 
 def readInputFile(inputFileName):
     
@@ -39,26 +40,43 @@ def readInputFile(inputFileName):
                 
     return wordDict, bigramDict, nextWordDict, prevWordDict
     
-def formInitialClusters(numClusInit, wordDict):
+def formInitialClusters(numClusInit, wordDict, typeClusInit):
     
     wordsInClusDict = {}
     wordToClusDict = {}
     
-    # Put top numClusInit-1 words into their own cluster
-    # Put the rest of the words into a single cluster
-    insertedClus = 0
-    for key, val in sorted(wordDict.items(), key=itemgetter(1), reverse=True):
-        if insertedClus == numClusInit:
-            wordToClusDict[key] = insertedClus
-            try:
-                wordsInClusDict[insertedClus].append(key)
-            except KeyError:
+    if typeClusInit == 0:
+    
+        # Put top numClusInit-1 words into their own cluster
+        # Put the rest of the words into a single cluster
+        insertedClus = 0
+        for key, val in sorted(wordDict.items(), key=itemgetter(1), reverse=True):
+            if insertedClus == numClusInit:
+                wordToClusDict[key] = insertedClus
+                try:
+                    wordsInClusDict[insertedClus].append(key)
+                except KeyError:
+                    wordsInClusDict[insertedClus] = [key]
+            else:
                 wordsInClusDict[insertedClus] = [key]
-        else:
-            wordsInClusDict[insertedClus] = [key]
-            wordToClusDict[key] = insertedClus
+                wordToClusDict[key] = insertedClus
         
-            insertedClus += 1
+                insertedClus += 1
+                
+    if typeClusInit == 1:
+        
+        # Put words into the clusters in a round robin fashion
+        # according the weight of the word
+        numWord = 0
+        for key, val in sorted(wordDict.items(), key=itemgetter(1), reverse=True):
+            newClusNum = numWord % numClusInit
+            wordToClusDict[key] = newClusNum
+            try:
+                wordsInClusDict[newClusNum].append(key)
+            except KeyError:
+                wordsInClusDict[newClusNum] = [key]
+                
+            numWord += 1    
             
     return wordToClusDict, wordsInClusDict
     
@@ -296,27 +314,23 @@ def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
         
     return clusUniCount, clusBiCount, wordToClusDict, wordsInClusDict
     
-def printNewClusters(wordsInClusDict):
+def printNewClusters(outputFileName, wordsInClusDict):
     
-    print '' 
+    outFile = open(outputFileName, 'w')
+     
     for clus in wordsInClusDict.keys():
-        print clus, '|||',       
+        outFile.write(str(clus)+' ||| ')       
         for word in wordsInClusDict[clus]:
-            print word,
-        print ''
+            outFile.write(word+' ')
+        outFile.write('\n')
     
-def main():
-    # File name containig unigram and bigram counts
-    dataFileName = sys.argv[1]
-    
-    # numClusInit = No. of initial word clusters
-    numClusInit = int(sys.argv[2])
+def main(inputFileName, outputFileName, numClusInit, typeClusInit):
     
     # Read the input file and get word counts
-    wordDict, bigramDict, nextWordDict, prevWordDict = readInputFile(dataFileName)
+    wordDict, bigramDict, nextWordDict, prevWordDict = readInputFile(inputFileName)
     
     # Initialise the cluster distribution
-    wordToClusDict, wordsInClusDict = formInitialClusters(numClusInit, wordDict)
+    wordToClusDict, wordsInClusDict = formInitialClusters(numClusInit, wordDict, typeClusInit)
     
     # Get counts of the initial cluster configuration
     clusUniCount, clusBiCount = getClusterCounts(wordToClusDict, wordsInClusDict, wordDict, bigramDict)
@@ -327,9 +341,27 @@ def main():
     wordToClusDict, wordsInClusDict, nextWordDict, prevWordDict)
     
     # Print the clusters
-    printNewClusters(wordsInClusDict)
+    printNewClusters(outputFileName, wordsInClusDict)
     
 if __name__ == "__main__":
-    main()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--inputfile", type=str,
+                        help="Input file containing word bigram and unigram counts")
+    parser.add_argument("-n", "--numclus", type=int,
+                        help="No. of clusters to be formed")
+    parser.add_argument("-o", "--outputfile", type=str,
+                        help="Output file with word clusters")
+    parser.add_argument("-t", "--type", type=int, choices=[0, 1], default=0,
+                        help="type of cluster initialization")
+                        
+                        
+    args = parser.parse_args()
+    inputFileName = args.inputfile
+    numClusInit = args.numclus
+    outputFileName = args.outputfile
+    typeClusInit = args.type
+    
+    main(inputFileName, outputFileName, numClusInit, typeClusInit)
     
     
