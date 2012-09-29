@@ -1,8 +1,4 @@
-# Takes in bigram counts of a monolingual file
-# with all words lower cased and clusters them
-# using Monolingual clustering of Och, 2003
-
-# Usage: python netClustering.py dataFileName numClusInit > outFile
+# Type python ochClustering.py -h for information on how to use
 import sys
 from operator import itemgetter
 from math import log
