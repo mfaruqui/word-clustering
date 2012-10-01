@@ -102,13 +102,13 @@ def calcPerplexity(uniCount, biCount):
     sum1 = 0
     sum2 = 0
     
-    for (c1, c2) in biCount.keys():
-        nC1C2 = biCount[(c1,c2)]
+    for (c1, c2), nC1C2 in biCount.iteritems():
+        #nC1C2 = biCount[(c1,c2)]
         if nC1C2 != 0 and c1 != c2:
             sum1 += nC1C2 * log( nC1C2 )
     
-    for c in uniCount.keys():
-        n = uniCount[c]
+    for c, n in uniCount.iteritems():
+        #n = uniCount[c]
         if n != 0:
             sum2 += n * log( n )
             
@@ -121,66 +121,49 @@ clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
        newPerplex = origPerplex
        
        # Removing the effects of the old count from the perplexity
-       if clusUniCount[origClass] != 0:
-           newPerplex -= 2 * clusUniCount[origClass] * log ( clusUniCount[origClass] )
-       if clusUniCount[tempNewClass] != 0:
-           newPerplex -= 2 * clusUniCount[tempNewClass] * log ( clusUniCount[tempNewClass] )
+       v1 = clusUniCount[origClass]
+       v2 = clusUniCount[tempNewClass]
+       if v1 != 0:
+           newPerplex -= 2 * v1 * log ( v1 )
+       if v2 != 0:
+           newPerplex -= 2 * v2 * log ( v2 )
        
        for c1 in [origClass, tempNewClass]:
-           for c2 in clusUniCount.keys():
-               try:
-                   val = clusBiCount[(c1, c2)]
-                   if val != 0 and c1 != c2:
-                       newPerplex += val * log( val )
-               except KeyError:
-                   pass
+           for c2, x in clusUniCount.iteritems():
+               val = clusBiCount[(c1, c2)]
+               if val != 0 and c1 != c2:
+                   newPerplex += val * log( val )
                
-               try:
-                   val = clusBiCount[(c2, c1)]
-                   if val != 0 and c1 != c2:
-                       newPerplex += val * log( val )
-               except KeyError:
-                   pass
+               val = clusBiCount[(c2, c1)]
+               if val != 0 and c1 != c2:
+                   newPerplex += val * log( val )
                    
        # In the above function (origClass, tempClass) & (tempClass, origClass)
        # both have been counted twice, so remove them once each
-       try:
-           val = clusBiCount[(origClass, tempNewClass)]
-           if val != 0:
-               newPerplex -= val * log ( val )
-       except:
-           pass
-           
-       try:
-           val = clusBiCount[(tempNewClass, origClass)]
-           if val != 0:
-               newPerplex -= val * log ( val )
-       except:
-           pass
+       
+       # Since clusBiCount is a counter, it will return a zero if key isnt found
+       val = clusBiCount[(origClass, tempNewClass)]
+       if val != 0:
+           newPerplex -= val * log ( val )
+       
+       val = clusBiCount[(tempNewClass, origClass)]
+       if val != 0:
+           newPerplex -= val * log ( val )
        
        # Calculating only the changed bigram counts
        newBiCount = {}
-       
-       for c in clusUniCount.keys():
-           try:
-               newBiCount[(origClass, c)] = clusBiCount[(origClass, c)]
-           except:
-               pass
+       for c, x in clusUniCount.iteritems():
+           try: newBiCount[(origClass, c)] = clusBiCount[(origClass, c)]
+           except: pass
                
-           try:
-               newBiCount[(c, origClass)] = clusBiCount[(c, origClass)]
-           except:
-               pass
+           try: newBiCount[(c, origClass)] = clusBiCount[(c, origClass)]
+           except: pass
                
-           try:
-               newBiCount[(tempNewClass, c)] = clusBiCount[(tempNewClass, c)]
-           except:
-               newBiCount[(tempNewClass, c)] = 0
+           try: newBiCount[(tempNewClass, c)] = clusBiCount[(tempNewClass, c)]
+           except: newBiCount[(tempNewClass, c)] = 0
                
-           try:
-               newBiCount[(c, tempNewClass)] = clusBiCount[(c, tempNewClass)]
-           except:
-               newBiCount[(c, tempNewClass)] = 0
+           try: newBiCount[(c, tempNewClass)] = clusBiCount[(c, tempNewClass)]
+           except: newBiCount[(c, tempNewClass)] = 0
                    
        for w in nextWordDict[wordToBeShifted]:
            
@@ -236,7 +219,7 @@ def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
        
        return
 
-# Implementation fo Och 1999 clustering using the     
+# Implementation of Och 1999 clustering using the     
 # algorithm of Martin, Liermann, Ney 1998    
 def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
     wordToClusDict, wordsInClusDict, nextWordDict, prevWordDict):
@@ -246,12 +229,12 @@ def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
     while (wordsExchanged != 0):
     
         iterNum += 1
-        sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n')
         wordsExchanged = 0
         wordsDone = 0
     
         origPerplex = calcPerplexity(clusUniCount, clusBiCount)
-    
+        sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
+        
         # Looping over all the words in the vocabulory
         for word in wordDict.keys():
         
@@ -291,9 +274,9 @@ def printNewClusters(outputFileName, wordsInClusDict):
     
     outFile = open(outputFileName, 'w')
      
-    for clus in wordsInClusDict.keys():
+    for clus, wordList in wordsInClusDict.iteritems():
         outFile.write(str(clus)+' ||| ')       
-        for word in wordsInClusDict[clus]:
+        for word in wordList:
             outFile.write(word+' ')
         outFile.write('\n')
     
