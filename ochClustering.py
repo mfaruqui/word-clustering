@@ -1,7 +1,7 @@
 # Type python ochClustering.py -h for information on how to use
 import sys
 from operator import itemgetter
-from math import log
+import math
 import argparse
 from collections import Counter
 
@@ -84,11 +84,11 @@ def getClusterCounts(wordToClusDict, wordsInClusDict, wordDict, bigramDict):
     # Get initial bigram counts [n(C2,C1)]   
     clusBiCount = Counter()
     
-    for word in wordDict.keys():
+    for word in wordDict.iterkeys():
         clusNum = wordToClusDict[word]
         clusUniCount[clusNum] += wordDict[word]
     
-    for (w1, w2) in bigramDict.keys():
+    for (w1, w2) in bigramDict.iterkeys():
         c1 = wordToClusDict[w1]
         c2 = wordToClusDict[w2]
         clusBiCount[(c1, c2)] += bigramDict[(w1, w2)]
@@ -104,26 +104,38 @@ def calcPerplexity(uniCount, biCount):
     
     for (c1, c2), nC1C2 in biCount.iteritems():
         if nC1C2 != 0 and c1 != c2:
-            sum1 += nC1C2 * log( nC1C2 )
+            sum1 += nlogn( nC1C2 )
     
     for c, n in uniCount.iteritems():
         if n != 0:
-            sum2 += n * log( n )
+            sum2 += nlogn( n )
             
     perplex = 2 * sum2 - sum1
     return perplex
-    
-nlogn = lambda x: x if x == 0 else x * log(x)
+
+# Return the nlogn value if its already computed and stored in logValues
+# else computes it, stores it and then returns it
+logValues = {}    
+def nlogn(x):
+    if x == 0:
+        return x
+    else:
+        if x in logValues:
+            return logValues[x]
+        else:
+            logValues[x] = x * math.log(x)
+            return logValues[x]
        
 def calcTentativePerplex(origPerplex, wordToBeShifted, origClass, tempNewClass, clusUniCount, \
 clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
     
        newPerplex = origPerplex
        
-       # Removing the effects of the old count from the perplexity
+       # Removing the effects of the old unigram cluster count from the perplexity
        newPerplex -= 2 * nlogn(clusUniCount[origClass])
        newPerplex -= 2 * nlogn(clusUniCount[tempNewClass])
        
+       # Finding only those bigram cluster counts that will be effected by the word transfer
        newBiCount = {}
        for w in nextWordDict[wordToBeShifted]:
            c = wordToClusDict[w]
@@ -149,7 +161,7 @@ clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
            else:
                newBiCount[(c, tempNewClass)] = clusBiCount[(c, tempNewClass)] + bigramDict[(w, wordToBeShifted)]
        
-       # Adding the effects of new counts in the perplexity
+       # Adding the effects of new unigram cluster counts in the perplexity
        newOrigClassUniCount = clusUniCount[origClass] - wordDict[wordToBeShifted]
        newTempClassUniCount = clusUniCount[tempNewClass] + wordDict[wordToBeShifted]
        
@@ -158,11 +170,11 @@ clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
        
        for (c1, c2), val in newBiCount.iteritems():
             if c1 != c2:
+                # removing the effect of old cluster bigram counts
                 newPerplex += nlogn(clusBiCount[(c1, c2)])
+                # adding the effect of new cluster bigram counts
                 newPerplex -= nlogn(val)
            
-       #newPerplex -= sum(nlogn(val) for (c1, c2), val in newBiCount.iteritems() if c1 != c2)
-         
        return newPerplex
         
 def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
@@ -194,10 +206,11 @@ def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
 def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
     wordToClusDict, wordsInClusDict, nextWordDict, prevWordDict):
  
-    wordsExchanged = 1
+    wordsExchanged = 9999
     iterNum = 0
-    while (wordsExchanged != 0):
+    wordVocabLen = len(wordDict.keys())
     
+    while (wordsExchanged > 0.001 * wordVocabLen):
         iterNum += 1
         wordsExchanged = 0
         wordsDone = 0
@@ -207,7 +220,6 @@ def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
         
         # Looping over all the words in the vocabulory
         for word in wordDict.keys():
-        
             origClass = wordToClusDict[word]
             currLeastPerplex = origPerplex
             tempNewClass = origClass
@@ -272,14 +284,10 @@ def main(inputFileName, outputFileName, numClusInit, typeClusInit):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--inputfile", type=str,
-                        help="Input file containing word bigram and unigram counts")
-    parser.add_argument("-n", "--numclus", type=int,
-                        help="No. of clusters to be formed")
-    parser.add_argument("-o", "--outputfile", type=str,
-                        help="Output file with word clusters")
-    parser.add_argument("-t", "--type", type=int, choices=[0, 1], default=1,
-                        help="type of cluster initialization")
+    parser.add_argument("-i", "--inputfile", type=str, help="Input file containing word bigram and unigram counts")
+    parser.add_argument("-n", "--numclus", type=int, help="No. of clusters to be formed")
+    parser.add_argument("-o", "--outputfile", type=str, help="Output file with word clusters")
+    parser.add_argument("-t", "--type", type=int, choices=[0, 1], default=1, help="type of cluster initialization")
                         
     args = parser.parse_args()
     
