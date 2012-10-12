@@ -4,6 +4,7 @@ from operator import itemgetter
 import math
 import argparse
 from collections import Counter
+from mpi4py import MPI
 
 def readInputFile(inputFileName):
     
@@ -206,6 +207,19 @@ def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
     iterNum = 0
     wordVocabLen = len(wordDict.keys())
     
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    
+    my_wordDict = comm.bcast(wordDict, root=0)
+    my_bigramDict = comm.bcast(bigramDict, root=0)
+    my_clusUniCount = comm.bcast(clusUniCount, root=0)
+    my_clusBiCount = comm.bcast(clusBiCount, root=0)
+    my_wordToClusDict = comm.bcast(wordToClusDict, root=0)
+    my_wordsInClusDict = comm.bcast(wordsInClusDict, root=0)
+    my_nextWordDict = comm.bcast(nextWordDict, root=0)
+    my_prevWordDict = comm.bcast(prevWordDict, root=0)
+    
     while (wordsExchanged > 0.001 * wordVocabLen):
         iterNum += 1
         wordsExchanged = 0
@@ -214,12 +228,12 @@ def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
         origPerplex = calcPerplexity(clusUniCount, clusBiCount)
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         
-        # Looping over all the words in the vocabulory
+        # Looping over all the words in the vocabulary
         for word in wordDict.keys():
             origClass = wordToClusDict[word]
             currLeastPerplex = origPerplex
             tempNewClass = origClass
-        
+            
             # Try shifting every word to a new cluster and caluculate perplexity
             for possibleNewClass in clusUniCount.keys():
                 if possibleNewClass != origClass:
