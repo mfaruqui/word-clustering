@@ -1,3 +1,5 @@
+# To do: Updating updateDistribution finction() an dmaking things compatible
+
 # Type python ochClustering.py -h for information on how to use
 import sys
 from operator import itemgetter
@@ -19,13 +21,18 @@ def nlogn(x):
             logValues[x] = x * math.log(x)
             return logValues[x]
 
-def printNewClusters(outputFileName, wordsInClusDict):
+def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict):
     
     outFile = open(outputFileName, 'w')
-     
-    for clus, wordList in wordsInClusDict.iteritems():
-        outFile.write(str(clus)+' ||| ')       
-        for word in wordList:
+    
+    for ((clus1, wordListEn), (clus2, wordListFr)) in zip(enWordsInClusDict.iteritems(), frWordsInClusDict.iteritems()):
+        outFile.write(str(clus1)+' ||| ')       
+        for word in wordListEn:
+            outFile.write(word+' ')
+        outFile.write('\n')
+        
+        outFile.write(str(clus2)+' ||| ')       
+        for word in wordListFr:
             outFile.write(word+' ')
         outFile.write('\n')
         
@@ -187,47 +194,59 @@ def getWordSimilarity(alignDict, enWordDict, frWordDict):
                 
     return wordSimilarity
     
-def getClusterSimilarity(wordSimilarity, enClus, enClusUniDict, frClus, frClusUniDict):
+#def getClusterSimilarity(wordSimilarity, enClus, enClusUniDict, frClus, frClusUniDict):
 
-    clusSim = 0
-    for w_en in enWordsInClusDict[enClus]:
-        for w_fr in frWordsInClusDict[frClus]:
-            clusSim += wordSimilarity[(w_en, w_fr)]
+    #clusSim = 0
+    #for w_en in enWordsInClusDict[enClus]:
+    #    for w_fr in frWordsInClusDict[frClus]:
+    #        clusSim += wordSimilarity[(w_en, w_fr)]
             
-    return math.log(clusSim/pairs)
+    #return math.log(clusSim/pairs)
     
-def getAllAlignedWordsInClusPair(alignDict, enClusUniCount, enWordsInClusDict, frClusUniCount, frWordsInClusDict):
+    #return 1.0*len(alignedWordsInClusPair[(enClus, frClus)])/(len(enWordsInClusDict[enClus]) * len(frWordsInClusDict[frClus]))
+    
+def getAllAlignedWordsInClusPair(alignDict, enWordToClusDict, frWordToClusDict):
     
     alignedWordsInClusPair = {}
+    sys.stderr.write("\nMaking an word-alignment info dictionary of clusters...\n")
+    #for c_en in enClusUniCount.iterkeys():
+    #    for c_fr in frClusUniCount.iterkeys():
+    #        for w_en in enWordsInClusDict[c_en]:
+    #            for w_fr in frWordsInClusDict[c_fr]:
+    #                if (w_en, w_fr) in alignDict:
+    #                    if (c_en, c_fr) in alignedWordsInClusPair:
+    #                        alignedWordsInClusPair[(c_en, c_fr)].append((w_en, w_fr))
+    #                    else:
+    #                        alignedWordsInClusPair[(c_en, c_fr)] = [(w_en, w_fr)]
     
-    for c_en in enClusUniCount.iterkeys():
-        for c_fr in frClusUniCount.iterkeys():
-            for w_en in enWordsInClusDict[c_en]:
-                for w_fr in frWordsInClusDict[c_fr]:
-                    if (w_en, w_fr) in alignDict:
-                        if (c_en, c_fr) in alignedWordsInClusPair:
-                            alignedWordsInClusPair[(c_en, c_fr)].append((w_en, w_fr))
-                        else:
-                            alignedWordsInClusPair[(c_en, c_fr)] = [(w_en, w_fr)]
+    for (w_en, w_fr) in alignDict.iterkeys():
+        c_en = enWordToClusDict[w_en]
+        c_fr = frWordToClusDict[w_fr]
+        
+        if (c_en, c_fr) in alignedWordsInClusPair:
+            alignedWordsInClusPair[(c_en, c_fr)].append((w_en, w_fr))
+        else:
+            alignedWordsInClusPair[(c_en, c_fr)] = [(w_en, w_fr)]
                             
     return alignedWordsInClusPair
     
-def getClusSimilarity(wordSimilarityDict, frWordsInClusDict, enWordsInClusDict):
+def getClusSimilarity(alignedWordsInClusPairDict, enClusUniCount, frClusUniCount, enWordsInClusDict, frWordsInClusDict):
     
     clusSimilarityDict = Counter()
-    
+    sys.stderr.write("\nComputing initial inter-language cluster similarities...\n")
     for c_en in enClusUniCount.iterkeys():
         for c_fr in frClusUniCount.iterkeys():
             
-            for w_en in enWordsInClusDict[c_en]:
-                for w_fr in frWordsInClusDict[c_fr]:
-                    clusSimilarityDict[(c_en, c_fr)] += wordSimilarity[(w_en, w_fr)]
-
-            clusSimilarityDict[(c_en, c_fr)] = clusSimilarityDict[(c_en, c_fr)]
-            
+            #for w_en in enWordsInClusDict[c_en]:
+            #    for w_fr in frWordsInClusDict[c_fr]:
+            #        clusSimilarityDict[(c_en, c_fr)] += wordSimilarity[(w_en, w_fr)]
+            if (c_en, c_fr) in alignedWordsInClusPairDict:
+                clusSimilarityDict[(c_en, c_fr)] = 1.0*len(alignedWordsInClusPairDict[(c_en, c_fr)])/(len(frWordsInClusDict[c_en])*len(enWordsInClusDict[c_fr]))
+            else:
+                clusSimilarityDict[(c_en, c_fr)] = 0.0
     return clusSimilarityDict
 
-def calcPerplexity(alignDict, enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
+def calcPerplexity(alignDict, clusSimilarityDict, enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
                    enWordDict, frWordDict, enUniCount, enBiCount, frUniCount, frBiCount):
     
     sum1 = 0
@@ -266,7 +285,8 @@ def calcPerplexity(alignDict, enWordToClusDict, frWordToClusDict, enWordsInClusD
     return perplex
             
 def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewClass, clusUniCount, \
-                         clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
+                         clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict,\
+                         clusSimilarityDict, alignedWordsInClusPairDict, enToFrAlignedDict, frToEnAlignedDict, enWordToClusDict, frWordToClusDict):
     
     newPerplex = origPerplex
        
@@ -314,13 +334,51 @@ def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewC
              # adding the effect of new cluster bigram counts
              newPerplex -= nlogn(val)
                           
-    # Removing effects of old cluster complexity
-    for (w_en, w_fr) in alignedWordsInClusPair[(origClass, tempNewClass)]
+    if lang == 'en':
+        c_en = enWordToClusDict[wordToBeShifted]
+        frSeenClus = {}
+        
+        for w_fr in enToFrAlignedDict[wordToBeShifted]:
+            c_fr = frWordToClusDict[w_fr]
+            
+            if c_fr not in frSeenClus:
+                frSeenClus[c_fr] = 0
+                oldClusFactor = clusSimilarityDict[(c_en, c_fr)]
+                newPerplex += math.log(oldClusFactor)
+                
+                pairs = 0
+                for (w2_en, w2_fr) in alignedWordsInClusPairDict[(c_en, c_fr)]:
+                    if w2_en != wordToBeShifted:
+                        pairs += 1        
+                newPerplex -= math.log(1.0*pairs/((len(enWordsInClusDict[c_en])-1)*len(frWordsInClusDict[c_fr])))
+            else:
+                pass
+                            
+    if lang == 'fr':
+        c_fr = frWordToClusDict[wordToBeShifted]
+        enSeenClus = {}
+        
+        for w_en in frToEnAlignedDict[wordToBeShifted]:
+            c_en = enWordToClusDict[w_en]
+            
+            if c_en not in enSeenClus:
+                enSeenClus[c_en] = 0
+                oldClusFactor = clusSimilarityDict[(c_en, c_fr)]
+                newPerplex += math.log(oldClusFactor)
+                
+                pairs = 0
+                for (w2_en, w2_fr) in alignedWordsInClusPairDict[(c_en, c_fr)]:
+                    if w2_fr != wordToBeShifted:
+                        pairs += 1        
+                newPerplex -= math.log(1.0*pairs/(len(enWordsInClusDict[c_en])*(len(frWordsInClusDict[c_fr]-1))))
+            else:
+                pass
+                
+    del enSeenClus
+    del frSeenClus
     
     return newPerplex
                                                 
-    
-        
 def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
             clusBiCount, wordToClusDict, wordsInClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
             
@@ -343,8 +401,9 @@ def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
        
        return
        
-def rearrangeClusters(origPerplex, clusUniCount, clusBiCount, wordToClusDict,\
-                    wordDict, bigramDict, nextWordDict, prevWordDict):
+def rearrangeClusters(lang, origPerplex,
+                clusUniCount, clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict, \
+                clusSimilarityDict, alignedWordsInClusPairDict, enToFrAlignedDict, frToEnAlignedDict, enWordToClusDict, frWordToClusDict):
     
     wordsExchanged = 0
     
@@ -357,9 +416,9 @@ def rearrangeClusters(origPerplex, clusUniCount, clusBiCount, wordToClusDict,\
         # Try shifting every word to a new cluster and caluculate perplexity
         for possibleNewClass in clusUniCount.keys():
             if possibleNewClass != origClass:
-                possiblePerplex = calcTentativePerplex(origPerplex, word, origClass, possibleNewClass,\
-                clusUniCount, clusBiCount, wordToClusDict, wordDict, bigramDict,
-                nextWordDict, prevWordDict)
+                possiblePerplex = calcTentativePerplex(lang, origPerplex, word, origClass, possibleNewClass,\
+                clusUniCount, clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict, \
+                clusSimilarityDict, alignedWordsInClusPairDict, enToFrAlignedDict, frToEnAlignedDict, enWordToClusDict, frWordToClusDict)
                 
                 if possiblePerplex < currLeastPerplex:
                     currLeastPerplex = possiblePerplex
@@ -370,9 +429,8 @@ def rearrangeClusters(origPerplex, clusUniCount, clusBiCount, wordToClusDict,\
             sys.stderr.write(str(wordsDone)+' ')
             
         if tempNewClass != origClass:
-            #sys.stderr.write(word+' '+str(origClass)+'->'+str(tempNewClass)+' ')
             wordsExchanged += 1
-            updateClassDistrib(word, origClass, tempNewClass, clusUniCount,\
+            updateClassDistrib(clusSimilarityDict, word, origClass, tempNewClass, clusUniCount,\
             clusBiCount, wordToClusDict, wordsInClusDict, wordDict, bigramDict, nextWordDict, prevWordDict)
             
         origPerplex = currLeastPerplex
@@ -382,7 +440,7 @@ def rearrangeClusters(origPerplex, clusUniCount, clusBiCount, wordToClusDict,\
 
 # Implementation of Och 1999 clustering using the     
 # algorithm of Martin, Liermann, Ney 1998    
-def runOchClustering(alignDict,\
+def runOchClustering(alignDict, alignedWordsInClusPairDict, clusSimilarityDict, enToFrAlignedDict, frToEnAlignedDict,\
     enWordDict, enBigramDict, enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict, enNextWordDict, enPrevWordDict,\
     frWordDict, frBigramDict, frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict, frNextWordDict, frPrevWordDict
     ):
@@ -397,29 +455,49 @@ def runOchClustering(alignDict,\
         wordsExchanged = 0
         wordsDone = 0
     
-        origPerplex = calcPerplexity(alignDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
+        origPerplex = calcPerplexity(alignDict, clusSimilarityDict, enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
+                   enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         
         sys.stderr.write('\nRearranging English words...\n')
-        wordsExchanged += rearrangeClusters(origPerplex, enClusUniCount, enClusBiCount, enWordToClusDict,\
-                                            enWordDict, enBigramDict, enNextWordDict, enPrevWordDict)
+        wordsExchanged += rearrangeClusters('en', origPerplex,
+                enClusUniCount, enClusBiCount, enWordToClusDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
+                clusSimilarityDict, alignedWordsInClusPairDict, enToFrAlignedDict, frToEnAlignedDict, enWordToClusDict, frWordToClusDict)
                     
-        origPerplex = calcPerplexity(alignDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
+        origPerplex = calcPerplexity(alignDict, clusSimilarityDict, enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
+                   enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
         sys.stderr.write('\nRearranging French words...\n')            
-        wordsExchanged += rearrangeClusters(origPerplex, frClusUniCount, frClusBiCount, frWordToClusDict,\
-                                            frWordDict, frBigramDict, frNextWordDict, frPrevWordDict)
+        wordsExchanged += rearrangeClusters('fr', origPerplex,
+                frClusUniCount, frClusBiCount, frWordToClusDict, frWordDict, frBigramDict, frNextWordDict, frPrevWordDict, \
+                clusSimilarityDict, alignedWordsInClusPairDict, enToFrAlignedDict, frToEnAlignedDict, enWordToClusDict, frWordToClusDict)
         
         sys.stderr.write('\nwordsExchanged: '+str(wordsExchanged)+'\n')
             
     return enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict,\
            frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict
     
+def getBothWaysAlignment(alignDict):
+    
+    enToFr = {}
+    frToEn = {}
+    for (w_en, w_fr) in alignDict:
+        if w_en not in enToFr:
+            enToFr[w_en] = [w_fr]
+        else:
+            enToFr[w_en].append(w_fr)
+            
+        if w_fr not in frToEn:
+            frToEn[w_fr] = [w_en]
+        else:
+            frToEn[w_fr].append(w_en)
+            
+    return enToFr, frToEn
+    
 def main(inputFileName, alignFileName, outputFileName, numClusInit, typeClusInit):
     
     # Read the input file and get word counts
     alignDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
     frWordDict, frBigramDict, frNextWordDict, frPrevWordDict = readBilingualData(inputFileName, alignFileName)
-    #sys.exit()
     
     # Initialise the cluster distribution
     enWordToClusDict, enWordsInClusDict = formInitialClusters(numClusInit, enWordDict, typeClusInit)
@@ -429,20 +507,22 @@ def main(inputFileName, alignFileName, outputFileName, numClusInit, typeClusInit
     enClusUniCount, enClusBiCount = getClusterCounts(enWordToClusDict, enWordsInClusDict, enWordDict, enBigramDict)
     frClusUniCount, frClusBiCount = getClusterCounts(frWordToClusDict, frWordsInClusDict, frWordDict, frBigramDict)
     
-    # Get a word similarity across languages
-    wordSimilarityDict = getWordSimilarity(alignDict, enWordDict, frWordDict)
-    
     # Get a dictionary of aligned word pairs in a cluster pair
-    #alignedWordsInClusPair = getAllAlignedWordsInClusPair(alignDict, enClusUniCount, enWordsInClusDict, frClusUniCount, frWordsInClusDict)
+    alignedWordsInClusPairDict = getAllAlignedWordsInClusPair(alignDict, enWordToClusDict, frWordToClusDict)
+    enToFrAlignedDict, frToEnAlignedDict = getBothWaysAlignment(alignDict)
+    
+    # Get a word similarity across languages
+    # wordSimilarityDict = getWordSimilarity(alignDict, enWordDict, frWordDict)
+    
+    # Get cluster similarity of all possible pairs
+    clusSimilarityDict = getClusSimilarity(alignedWordsInClusPairDict, enClusUniCount, frClusUniCount, enWordsInClusDict, frWordsInClusDict)
     
     # Run the clustering algorithm and get new clusters    
     enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict,\
     frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict = \
-        runOchClustering(alignDict, wordSimilarityDict, \
-        enWordDict, enBigramDict, enClusUniCount, enClusBiCount,\
-        enWordToClusDict, enWordsInClusDict, enNextWordDict, enPrevWordDict,\
-        frWordDict, frBigramDict, frClusUniCount, frClusBiCount,\
-        frWordToClusDict, frWordsInClusDict, frNextWordDict, frPrevWordDict\
+        runOchClustering(alignDict, alignedWordsInClusPairDict, clusSimilarityDict, enToFrAlignedDict, frToEnAlignedDict,\
+        enWordDict, enBigramDict, enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict, enNextWordDict, enPrevWordDict,\
+        frWordDict, frBigramDict, frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict, frNextWordDict, frPrevWordDict\
         )
     
     # Print the clusters
