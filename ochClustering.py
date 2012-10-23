@@ -5,35 +5,47 @@ import math
 import argparse
 from collections import Counter
 
+def getNextPrevWordDict(bigramDict):
+    
+    nextWordDict = {}
+    prevWordDict = {}
+    for (w1, w2) in bigramDict.iterkeys():
+        if w1 in nextWordDict:
+            if w2 in nextWordDict[w1]:
+                pass
+            else:
+                nextWordDict[w1].append(w2)
+        else:
+            nextWordDict[w1] = [w2]
+            
+        if w2 in prevWordDict:
+            if w1 in prevWordDict[w2]:
+                pass
+            else:
+                prevWordDict[w2].append(w1)
+        else:
+            prevWordDict[w2] = [w1]
+              
+    return nextWordDict, prevWordDict
+
 def readInputFile(inputFileName):
     
-    wordDict = {}
-    bigramDict = {}
+    wordDict = Counter()
+    bigramDict = Counter()
     
-    # Stores the list of words next to a given word
-    nextWordDict = {}
-    # Stores the list of words appearing before a given word
-    prevWordDict = {}
-    
-    for line in open(inputFileName,'r'):
-        line = line.strip()
-    
-        try:
-            w, num = line.split()
-            wordDict[w] = int(num)
-        except:
-            w1, w2, num = line.split()
-            bigramDict[(w1, w2)] = int(num)
+    for en in open(inputFileName,'r'):
         
-            try:
-                nextWordDict[w1].append(w2)
-            except KeyError:
-                nextWordDict[w1] = [w2]
+        en = en.strip()
+        enWords = en.split()
         
-            try:
-                prevWordDict[w2].append(w1)
-            except KeyError:
-                prevWordDict[w2] = [w1]
+        prevWord = ''
+        for word in enWords:
+            wordDict[word] += 1
+            if prevWord != '':
+                bigramDict[(prevWord, word)] += 1
+            prevWord = word
+     
+    nextWordDict, prevWordDict = getNextPrevWordDict(bigramDict)    
                 
     return wordDict, bigramDict, nextWordDict, prevWordDict
     
@@ -135,29 +147,31 @@ clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
        
        # Finding only those bigram cluster counts that will be effected by the word transfer
        newBiCount = {}
-       for w in nextWordDict[wordToBeShifted]:
-           c = wordToClusDict[w]
-           if (origClass, c) in newBiCount:
-               newBiCount[(origClass, c)] -= bigramDict[(wordToBeShifted, w)]
-           else:
-               newBiCount[(origClass, c)] = clusBiCount[(origClass, c)] - bigramDict[(wordToBeShifted, w)]
+       if nextWordDict.has_key(wordToBeShifted):
+           for w in nextWordDict[wordToBeShifted]:
+               c = wordToClusDict[w]
+               if (origClass, c) in newBiCount:
+                   newBiCount[(origClass, c)] -= bigramDict[(wordToBeShifted, w)]
+               else:
+                   newBiCount[(origClass, c)] = clusBiCount[(origClass, c)] - bigramDict[(wordToBeShifted, w)]
                
-           if (tempNewClass, c) in newBiCount:
-               newBiCount[(tempNewClass, c)] += bigramDict[(wordToBeShifted, w)]
-           else:
-               newBiCount[(tempNewClass, c)] = clusBiCount[(tempNewClass, c)] + bigramDict[(wordToBeShifted, w)]      
+               if (tempNewClass, c) in newBiCount:
+                   newBiCount[(tempNewClass, c)] += bigramDict[(wordToBeShifted, w)]
+               else:
+                   newBiCount[(tempNewClass, c)] = clusBiCount[(tempNewClass, c)] + bigramDict[(wordToBeShifted, w)]      
+       
+       if prevWordDict.has_key(wordToBeShifted):        
+           for w in prevWordDict[wordToBeShifted]:
+               c = wordToClusDict[w]
+               if (c, origClass) in newBiCount:
+                   newBiCount[(c, origClass)] -= bigramDict[(w, wordToBeShifted)]
+               else:
+                   newBiCount[(c, origClass)] = clusBiCount[(c, origClass)] - bigramDict[(w, wordToBeShifted)]
                
-       for w in prevWordDict[wordToBeShifted]:
-           c = wordToClusDict[w]
-           if (c, origClass) in newBiCount:
-               newBiCount[(c, origClass)] -= bigramDict[(w, wordToBeShifted)]
-           else:
-               newBiCount[(c, origClass)] = clusBiCount[(c, origClass)] - bigramDict[(w, wordToBeShifted)]
-               
-           if (c, tempNewClass) in newBiCount:
-               newBiCount[(c, tempNewClass)] += bigramDict[(w, wordToBeShifted)]
-           else:
-               newBiCount[(c, tempNewClass)] = clusBiCount[(c, tempNewClass)] + bigramDict[(w, wordToBeShifted)]
+               if (c, tempNewClass) in newBiCount:
+                   newBiCount[(c, tempNewClass)] += bigramDict[(w, wordToBeShifted)]
+               else:
+                   newBiCount[(c, tempNewClass)] = clusBiCount[(c, tempNewClass)] + bigramDict[(w, wordToBeShifted)]
        
        # Adding the effects of new unigram cluster counts in the perplexity
        newOrigClassUniCount = clusUniCount[origClass] - wordDict[wordToBeShifted]
@@ -181,12 +195,14 @@ def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
        clusUniCount[origClass] -= wordDict[wordToBeShifted]
        clusUniCount[tempNewClass] += wordDict[wordToBeShifted]
        
-       for w in nextWordDict[wordToBeShifted]:
+       if nextWordDict.has_key(wordToBeShifted):
+           for w in nextWordDict[wordToBeShifted]:
               c = wordToClusDict[w]
               clusBiCount[(origClass, c)] -= bigramDict[(wordToBeShifted, w)]
               clusBiCount[(tempNewClass, c)] += bigramDict[(wordToBeShifted, w)]
-               
-       for w in prevWordDict[wordToBeShifted]:
+       
+       if prevWordDict.has_key(wordToBeShifted):        
+           for w in prevWordDict[wordToBeShifted]:
                c = wordToClusDict[w]
                clusBiCount[(c, origClass)] -= bigramDict[(w, wordToBeShifted)]
                clusBiCount[(c, tempNewClass)] += bigramDict[(w, wordToBeShifted)]
@@ -206,7 +222,7 @@ def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
     iterNum = 0
     wordVocabLen = len(wordDict.keys())
     
-    while (wordsExchanged > 0.001 * wordVocabLen):
+    while (wordsExchanged > 0.0005 * wordVocabLen):
         iterNum += 1
         wordsExchanged = 0
         wordsDone = 0
