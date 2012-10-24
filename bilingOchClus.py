@@ -21,7 +21,8 @@ def nlogn(x):
 
 def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict):
     
-    outFile = open(outputFileName, 'w')
+    outFileEn = open(outputFileName+'.en', 'w')
+    outFileFr = open(outputFileName+'.fr', 'w')
     
     clusSimDict = {}
     for ((clus1, wordListEn), (clus2, wordListFr)) in zip(enWordsInClusDict.iteritems(), frWordsInClusDict.iteritems()):
@@ -31,20 +32,22 @@ def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict):
             clusSimDict[clus1] = 0.0
         
     for clus, val in sorted(clusSimDict.items(), key=itemgetter(1), reverse=True):
-        #for ((clus1, wordListEn), (clus2, wordListFr)) in zip(enWordsInClusDict.iteritems(), frWordsInClusDict.iteritems()):
         
         wordListEn = enWordsInClusDict[clus]
         wordListFr = frWordsInClusDict[clus]
         
-        outFile.write(str(clus)+' ||| ')       
+        outFileEn.write(str(clus)+' ||| ')       
         for word in wordListEn:
-            outFile.write(word+' ')
-        outFile.write('\n')
+            outFileEn.write(word+' ')
+        outFileEn.write('\n')
         
-        outFile.write(str(clus)+' ||| ')       
+        outFileFr.write(str(clus)+' ||| ')       
         for word in wordListFr:
-            outFile.write(word+' ')
-        outFile.write('\n')
+            outFileFr.write(word+' ')
+        outFileFr.write('\n')
+        
+    outFileEn.close()
+    outFileFr.close()
         
 def getNextPrevWordDict(bigramDict):
     
@@ -514,12 +517,13 @@ def runOchClustering(
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         sys.stderr.write('\nRearranging English words...\n')
         
-        wordsExchanged = rearrangeClusters('en', origPerplex,
+        wordsExchangedEn = rearrangeClusters('en', origPerplex,
                 enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
                 enWordsInClusDict, frWordsInClusDict, \
                 enWordToClusDict, frWordToClusDict)
-        
-        sys.stderr.write('\nwordsExchanged: '+str(wordsExchanged)+'\n')
+                
+        wordsExchanged = wordsExchangedEn
+        sys.stderr.write('\nwordsExchanged: '+str(wordsExchangedEn)+'\n')
                     
         origPerplex = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
                    enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
@@ -527,12 +531,13 @@ def runOchClustering(
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         sys.stderr.write('\nRearranging French words...\n')
                     
-        wordsExchanged = rearrangeClusters('fr', origPerplex,
+        wordsExchangedFr = rearrangeClusters('fr', origPerplex,
                 frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict, frWordDict, frBigramDict, frNextWordDict, frPrevWordDict, \
                 enWordsInClusDict, frWordsInClusDict, \
                 enWordToClusDict, frWordToClusDict)
         
-        sys.stderr.write('\nwordsExchanged: '+str(wordsExchanged)+'\n')
+        wordsExchanged += wordsExchangedFr 
+        sys.stderr.write('\nwordsExchanged: '+str(wordsExchangedFr)+'\n')
             
     return enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict,\
            frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict

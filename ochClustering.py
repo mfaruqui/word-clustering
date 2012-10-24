@@ -222,7 +222,7 @@ def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
     iterNum = 0
     wordVocabLen = len(wordDict.keys())
     
-    while (wordsExchanged > 0.0005 * wordVocabLen):
+    while (wordsExchanged > 0.001 * wordVocabLen):
         iterNum += 1
         wordsExchanged = 0
         wordsDone = 0
