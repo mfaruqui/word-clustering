@@ -492,7 +492,7 @@ def rearrangeClusters(lang, origPerplex,
 
         origPerplex = currLeastPerplex
         
-    return wordsExchanged                
+    return wordsExchanged, currLeastPerplex                
     
 
 # Implementation of Och 1999 clustering using the     
@@ -507,32 +507,28 @@ def runOchClustering(
     enWordVocabLen = len(enWordDict.keys())
     frWordVocabLen = len(frWordDict.keys())
     
+    origPerplex = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
+               enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
+    
     while (wordsExchanged > 0.001 * (enWordVocabLen + frWordVocabLen)):
         iterNum += 1
         wordsExchanged = 0
         wordsDone = 0
     
-        origPerplex = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
-                   enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
-        
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         sys.stderr.write('\nRearranging English words...\n')
         
-        wordsExchangedEn = rearrangeClusters('en', origPerplex,
+        wordsExchangedEn, origPerplex = rearrangeClusters('en', origPerplex,
                 enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
                 enWordsInClusDict, frWordsInClusDict, \
                 enWordToClusDict, frWordToClusDict)
                 
         wordsExchanged = wordsExchangedEn
         sys.stderr.write('\nwordsExchanged: '+str(wordsExchangedEn)+'\n')
-                    
-        origPerplex = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
-                   enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
-        
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         sys.stderr.write('\nRearranging French words...\n')
                     
-        wordsExchangedFr = rearrangeClusters('fr', origPerplex,
+        wordsExchangedFr, origPerplex = rearrangeClusters('fr', origPerplex,
                 frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict, frWordDict, frBigramDict, frNextWordDict, frPrevWordDict, \
                 enWordsInClusDict, frWordsInClusDict, \
                 enWordToClusDict, frWordToClusDict)

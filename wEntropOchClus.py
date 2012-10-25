@@ -563,7 +563,7 @@ def rearrangeClusters(lang, origPerplex,
 
         origPerplex = currLeastPerplex
         
-    return wordsExchanged                
+    return wordsExchanged, currLeastPerplex                
     
 
 # Implementation of Och 1999 clustering using the     
@@ -578,36 +578,34 @@ def runOchClustering(
     enWordVocabLen = len(enWordDict.keys())
     frWordVocabLen = len(frWordDict.keys())
     
+    origPerplex = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
+               enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
+    
     while (wordsExchanged > 0.001 * (enWordVocabLen + frWordVocabLen)):
         iterNum += 1
         wordsExchanged = 0
         wordsDone = 0
     
-        origPerplex = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
-                   enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
-        
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         sys.stderr.write('\nRearranging English words...\n')
         
-        wordsExchanged = rearrangeClusters('en', origPerplex,
+        wordsExchangedEn, origPerplex = rearrangeClusters('en', origPerplex,
                 enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
                 enWordsInClusDict, frWordsInClusDict, \
                 enWordToClusDict, frWordToClusDict, enWordDict, frWordDict)
         
-        sys.stderr.write('\nwordsExchanged: '+str(wordsExchanged)+'\n')
-                    
-        origPerplex = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
-                   enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
-        
+        wordsExchanged = wordsExchangedEn
+        sys.stderr.write('\nwordsExchanged: '+str(wordsExchangedEn)+'\n')            
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         sys.stderr.write('\nRearranging French words...\n')
                     
-        wordsExchanged = rearrangeClusters('fr', origPerplex,
+        wordsExchangedFr, origPerplex = rearrangeClusters('fr', origPerplex,
                 frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict, frWordDict, frBigramDict, frNextWordDict, frPrevWordDict, \
                 enWordsInClusDict, frWordsInClusDict, \
                 enWordToClusDict, frWordToClusDict, enWordDict, frWordDict)
         
-        sys.stderr.write('\nwordsExchanged: '+str(wordsExchanged)+'\n')
+        wordsExchanged += wordsExchangedFr
+        sys.stderr.write('\nwordsExchanged: '+str(wordsExchangedFr)+'\n')
             
     return enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict,\
            frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict
@@ -654,9 +652,6 @@ def main(inputFileName, alignFileName, outputFileName, numClusInit, typeClusInit
     # Get a dictionary of aligned word pairs in a cluster pair
     alignedWordsInClusPairDict = getAllAlignedWordsInClusPair(enWordToClusDict, frWordToClusDict)
     enToFrAlignedDict, frToEnAlignedDict = getBothWaysAlignment()
-    
-    # Get a word similarity across languages
-    # wordSimilarityDict = getWordSimilarity(alignDict, enWordDict, frWordDict)
     
     # Get cluster similarity of all possible pairs
     clusSimilarityDict = getClusSimilarity(enWordDict, frWordDict, enClusUniCount, frClusUniCount, enWordsInClusDict, frWordsInClusDict)
