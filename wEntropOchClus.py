@@ -32,6 +32,7 @@ def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict):
             clusSimDict[clus1] = 0.0
         
     for clus, val in sorted(clusSimDict.items(), key=itemgetter(1), reverse=True):
+        #for ((clus1, wordListEn), (clus2, wordListFr)) in zip(enWordsInClusDict.iteritems(), frWordsInClusDict.iteritems()):
         
         wordListEn = enWordsInClusDict[clus]
         wordListFr = frWordsInClusDict[clus]
@@ -48,6 +49,7 @@ def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict):
         
     outFileEn.close()
     outFileFr.close()
+        
         
 def getNextPrevWordDict(bigramDict):
     
@@ -174,7 +176,7 @@ def getClusterCounts(wordToClusDict, wordsInClusDict, wordDict, bigramDict):
         clusBiCount[(c1, c2)] += bigramDict[(w1, w2)]
             
     return clusUniCount, clusBiCount
-    
+
 def getAllAlignedWordsInClusPair(enWordToClusDict, frWordToClusDict):
     
     alignedWordsInClusPair = {}
@@ -191,15 +193,21 @@ def getAllAlignedWordsInClusPair(enWordToClusDict, frWordToClusDict):
                             
     return alignedWordsInClusPair
     
-def getClusSimilarity(enClusUniCount, frClusUniCount, enWordsInClusDict, frWordsInClusDict):
+def getClusSimilarity(enWordDict, frWordDict, enClusUniCount, frClusUniCount, enWordsInClusDict, frWordsInClusDict):
     
     clusSimilarityDict = Counter()
     sys.stderr.write("\nComputing initial inter-language cluster similarities...\n")
     
+    totLinks = len(alignDict)
+    enLen = len(enWordDict)
+    frLen = len(frWordDict)
     for c_en in enClusUniCount.iterkeys():
         for c_fr in frClusUniCount.iterkeys():
-            if (c_en, c_fr) in alignedWordsInClusPairDict:
-                clusSimilarityDict[(c_en, c_fr)] = 1.0*len(alignedWordsInClusPairDict[(c_en, c_fr)])/(len(frWordsInClusDict[c_en])*len(enWordsInClusDict[c_fr]))
+            if (c_en, c_fr) in alignedWordsInClusPairDict.iterkeys():
+                p_en = 1.0*len(enWordsInClusDict[c_en])/enLen
+                p_fr = 1.0*len(frWordsInClusDict[c_fr])/frLen
+                p_en_fr = 1.0*len(alignedWordsInClusPairDict[(c_en, c_fr)])/totLinks
+                clusSimilarityDict[(c_en, c_fr)] = p_en_fr * math.log(p_en_fr/(p_en*p_fr))
             else:
                 clusSimilarityDict[(c_en, c_fr)] = 0.0
                 
@@ -218,7 +226,12 @@ def calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWord
     for c, n in enUniCount.iteritems():
         if n != 0:
             sum2 += nlogn( n )
-            
+    
+    perplexEn = (2*sum2 - sum1)/sizeLang["en"]
+    
+    sum1 = 0
+    sum2 = 0
+    
     for (c1, c2), nC1C2 in frBiCount.iteritems():
         if nC1C2 != 0 and c1 != c2:
             sum1 += nlogn( nC1C2 )
@@ -227,33 +240,37 @@ def calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWord
         if n != 0:
             sum2 += nlogn( n )
             
-    perplex = 2 * sum2 - sum1
+    perplexFr = (2*sum2 - sum1)/sizeLang["fr"]
     
-    sumClusSim = 0
-    seenClusPair = {}
-    for (w_en, w_fr) in alignDict:
-        c_en = enWordToClusDict[w_en]
-        c_fr = frWordToClusDict[w_fr]
+    enWordCount = len(enWordDict)
+    frWordCount = len(frWordDict)
+    totLinks = len(alignDict)
+    sumClusEntrop = 0
+    
+    for (c_en, c_fr) in alignedWordsInClusPairDict.iterkeys():
+        links = len(alignedWordsInClusPairDict[(c_en, c_fr)])
+        p_en = 1.0*len(enWordsInClusDict[c_en])/enWordCount
+        p_fr = 1.0*len(frWordsInClusDict[c_fr])/frWordCount
+        p_en_fr = 1.0*links/totLinks
+        if links != 0:
+            sumClusEntrop += p_en_fr*math.log(p_en_fr/(p_en*p_fr))
+    
+    perplex = perplexEn + perplexFr
+    #sys.stderr.write('Mono factor:'+str(perplex)+' '+'Cross-lingual factor:'+str(power*sumClusEntrop)+'\n')
+    perplex -= power*sumClusEntrop
         
-        if (c_en, c_fr) not in seenClusPair:
-            seenClusPair[(c_en, c_fr)] = 0
-            sumClusSim += math.log(clusSimilarityDict[(c_en, c_fr)])
-    
-    sys.stderr.write('Mono factor:'+str(perplex)+' '+'Cross-lingual factor:'+str(power*sumClusSim)+'\n')        
-    perplex -= power*sumClusSim            
-    del seenClusPair
     return perplex
             
 def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewClass, clusUniCount, \
                          clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict,\
                          enWordsInClusDict, frWordsInClusDict, \
-                         enWordToClusDict, frWordToClusDict):
+                         enWordToClusDict, frWordToClusDict, enWordDict, frWordDict):
     
     newPerplex = origPerplex
        
     # Removing the effects of the old unigram cluster count from the perplexity
-    newPerplex -= 2 * nlogn(clusUniCount[origClass])
-    newPerplex -= 2 * nlogn(clusUniCount[tempNewClass])
+    newPerplex -= 2 * nlogn(clusUniCount[origClass])/sizeLang[lang]
+    newPerplex -= 2 * nlogn(clusUniCount[tempNewClass])/sizeLang[lang]
        
     # Finding only those bigram cluster counts that will be effected by the word transfer
     newBiCount = {}
@@ -288,18 +305,22 @@ def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewC
     newOrigClassUniCount = clusUniCount[origClass] - wordDict[wordToBeShifted]
     newTempClassUniCount = clusUniCount[tempNewClass] + wordDict[wordToBeShifted]
        
-    newPerplex += 2 * nlogn(newOrigClassUniCount)
-    newPerplex += 2 * nlogn(newTempClassUniCount)
+    newPerplex += 2 * nlogn(newOrigClassUniCount)/sizeLang[lang]
+    newPerplex += 2 * nlogn(newTempClassUniCount)/sizeLang[lang]
        
     for (c1, c2), val in newBiCount.iteritems():
          if c1 != c2:
              # removing the effect of old cluster bigram counts
-             newPerplex += nlogn(clusBiCount[(c1, c2)])
+             newPerplex += nlogn(clusBiCount[(c1, c2)])/sizeLang[lang]
              # adding the effect of new cluster bigram counts
-             newPerplex -= nlogn(val)
+             newPerplex -= nlogn(val)/sizeLang[lang]
                           
     if lang == 'en' and enToFrAlignedDict.has_key(wordToBeShifted):
         frSeenClus = {}
+        
+        totLinks = len(alignDict)
+        enLen = len(enWordDict)
+        frLen = len(frWordDict)
         
         for w_fr in enToFrAlignedDict[wordToBeShifted]:
             c_fr = frWordToClusDict[w_fr]
@@ -308,7 +329,7 @@ def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewC
                 frSeenClus[c_fr] = 0
                 oldClusFactor = clusSimilarityDict[(origClass, c_fr)]
                 #Changes due to the old cluster
-                newPerplex += power*math.log(oldClusFactor)
+                newPerplex += power*oldClusFactor
                 
                 pairs = 0
                 for (w2_en, w2_fr) in alignedWordsInClusPairDict[(origClass, c_fr)]:
@@ -316,25 +337,35 @@ def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewC
                         pairs += 1
                         
                 if pairs != 0:
-                    newPerplex -= power*math.log(1.0*pairs/((len(enWordsInClusDict[origClass])-1)*len(frWordsInClusDict[c_fr])))
+                    p_en = 1.0*(len(enWordsInClusDict[origClass])-1)/enLen
+                    p_fr = 1.0*len(frWordsInClusDict[c_fr])/frLen
+                    p_en_fr = 1.0*pairs/totLinks
+                    newPerplex -= power*p_en_fr*math.log(p_en_fr/(p_en*p_fr))
                 
                 #Changes due to the new cluster
                 oldClusFactor = clusSimilarityDict[(tempNewClass, c_fr)]
                 if oldClusFactor != 0.0:
-                    newPerplex += power*math.log(oldClusFactor)
+                    newPerplex += power*oldClusFactor                    
                 
                 newPairs = 0
                 for word_fr in enToFrAlignedDict[wordToBeShifted]:
                     if frWordToClusDict[word_fr] == c_fr:
                         newPairs += 1
-                
+                        
                 if newPairs != 0:
-                    newPerplex -= power*math.log(1.0*newPairs/((len(enWordsInClusDict[tempNewClass])+1)*len(frWordsInClusDict[c_fr])))
-                
+                    p_en = 1.0*(len(enWordsInClusDict[tempNewClass])+1)/enLen
+                    p_fr = 1.0*len(frWordsInClusDict[c_fr])/frLen
+                    p_en_fr = 1.0*newPairs/totLinks
+                    newPerplex -= power*p_en_fr*math.log(p_en_fr/(p_en*p_fr))
+                    
         del frSeenClus
                             
     if lang == 'fr' and frToEnAlignedDict.has_key(wordToBeShifted):
         enSeenClus = {}
+        
+        totLinks = len(alignDict)
+        enLen = len(enWordDict)
+        frLen = len(frWordDict)
         
         for w_en in frToEnAlignedDict[wordToBeShifted]:
             c_en = enWordToClusDict[w_en]
@@ -342,7 +373,7 @@ def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewC
             if c_en not in enSeenClus:
                 enSeenClus[c_en] = 0
                 oldClusFactor = clusSimilarityDict[(c_en, origClass)]
-                newPerplex += power*math.log(oldClusFactor)
+                newPerplex += power*oldClusFactor
                 
                 pairs = 0
                 for (w2_en, w2_fr) in alignedWordsInClusPairDict[(c_en, origClass)]:
@@ -350,19 +381,25 @@ def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewC
                         pairs += 1
                         
                 if pairs != 0:
-                    newPerplex -= power*math.log(1.0*pairs/(len(enWordsInClusDict[c_en])*(len(frWordsInClusDict[origClass])-1)))
+                    p_en = 1.0*len(enWordsInClusDict[c_en])/enLen
+                    p_fr = 1.0*(len(frWordsInClusDict[origClass])-1)/frLen
+                    p_en_fr = 1.0*pairs/totLinks
+                    newPerplex -= power*p_en_fr*math.log(p_en_fr/(p_en*p_fr))
                 
                 oldClusFactor = clusSimilarityDict[(c_en, tempNewClass)]
                 if oldClusFactor != 0.0:
-                    newPerplex += math.log(oldClusFactor)
+                    newPerplex += power*oldClusFactor
                 
                 newPairs = 0
                 for word_en in frToEnAlignedDict[wordToBeShifted]:
                     if enWordToClusDict[word_en] == c_en:
                         newPairs += 1
-                        
+                
                 if newPairs != 0:
-                    newPerplex -= power*math.log(1.0*newPairs/(len(enWordsInClusDict[c_en])*(len(frWordsInClusDict[tempNewClass])+1)))
+                    p_en = 1.0*len(enWordsInClusDict[c_en])/enLen
+                    p_fr = 1.0*(len(frWordsInClusDict[tempNewClass])+1)/frLen
+                    p_en_fr = 1.0*newPairs/totLinks
+                    newPerplex -= power*p_en_fr*math.log(p_en_fr/(p_en*p_fr))
                 
         del enSeenClus
     
@@ -371,7 +408,7 @@ def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewC
 def updateClassDistrib(lang, \
                         enWordsInClusDict, frWordsInClusDict, enWordToClusDict, frWordToClusDict, \
                         wordToBeShifted, origClass, tempNewClass, clusUniCount, clusBiCount, wordToClusDict, \
-                        wordsInClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
+                        wordsInClusDict, wordDict, bigramDict, nextWordDict, prevWordDict, enWordDict, frWordDict):
             
        clusUniCount[origClass] -= wordDict[wordToBeShifted]
        clusUniCount[tempNewClass] += wordDict[wordToBeShifted]
@@ -394,29 +431,46 @@ def updateClassDistrib(lang, \
        
        if lang == 'en' and enToFrAlignedDict.has_key(wordToBeShifted):
            frSeenClus = {}
+           
+           totLinks = len(alignDict)
+           enLen = len(enWordDict)
+           frLen = len(frWordDict)
         
            for w_fr in enToFrAlignedDict[wordToBeShifted]:
                c_fr = frWordToClusDict[w_fr]
             
                if c_fr not in frSeenClus:
                    frSeenClus[c_fr] = 0
+                   
                    pairs = 0
                    for (w2_en, w2_fr) in alignedWordsInClusPairDict[(origClass, c_fr)]:
                        if w2_en != wordToBeShifted:
                            pairs += 1        
-                   clusSimilarityDict[(origClass, c_fr)] = 1.0*pairs/((len(enWordsInClusDict[origClass])-1)*len(frWordsInClusDict[c_fr]))
+                   
+                   if pairs != 0:
+                       p_en = 1.0*(len(enWordsInClusDict[origClass])-1)/enLen
+                       p_fr = 1.0*len(frWordsInClusDict[c_fr])/frLen
+                       p_en_fr = 1.0*pairs/totLinks
+                       clusSimilarityDict[(origClass, c_fr)] = p_en_fr*math.log(p_en_fr/(p_en*p_fr))
                 
                    #Changes due to the new cluster
                    newPairs = 0
                    for word_fr in enToFrAlignedDict[wordToBeShifted]:
                        if frWordToClusDict[word_fr] == c_fr:
                            newPairs += 1
-                           
-                   clusSimilarityDict[(tempNewClass, c_fr)] = 1.0*newPairs/((len(enWordsInClusDict[tempNewClass])+1)*len(frWordsInClusDict[c_fr]))
+                        
+                   if newPairs != 0:
+                       p_en = 1.0*(len(enWordsInClusDict[tempNewClass])+1)/enLen
+                       p_fr = 1.0*len(frWordsInClusDict[c_fr])/frLen
+                       p_en_fr = 1.0*newPairs/totLinks
+                       clusSimilarityDict[(tempNewClass, c_fr)] = p_en_fr*math.log(p_en_fr/(p_en*p_fr))
                    
            for w_fr in enToFrAlignedDict[wordToBeShifted]:
                c_fr = frWordToClusDict[w_fr]
                alignedWordsInClusPairDict[(origClass, c_fr)].remove((wordToBeShifted, w_fr))
+               if alignedWordsInClusPairDict[(origClass, c_fr)] == []:
+                   del alignedWordsInClusPairDict[(origClass, c_fr)]
+                   
                if (tempNewClass, c_fr) in alignedWordsInClusPairDict:
                    alignedWordsInClusPairDict[(tempNewClass, c_fr)].append((wordToBeShifted, w_fr))
                else:
@@ -424,6 +478,10 @@ def updateClassDistrib(lang, \
                        
        if lang == 'fr' and frToEnAlignedDict.has_key(wordToBeShifted):
            enSeenClus = {}
+           
+           totLinks = len(alignDict)
+           enLen = len(enWordDict)
+           frLen = len(frWordDict)
         
            for w_en in frToEnAlignedDict[wordToBeShifted]:
                c_en = enWordToClusDict[w_en]
@@ -432,22 +490,35 @@ def updateClassDistrib(lang, \
                # irrespective of the number of aligned words it has
                if c_en not in enSeenClus:
                    enSeenClus[c_en] = 0
+                   
                    pairs = 0
                    for (w2_en, w2_fr) in alignedWordsInClusPairDict[(c_en, origClass)]:
                        if w2_fr != wordToBeShifted:
-                           pairs += 1        
-                   clusSimilarityDict[(c_en, origClass)] = 1.0*pairs/(len(enWordsInClusDict[c_en])*(len(frWordsInClusDict[origClass])-1))
+                           pairs += 1
+                           
+                   if pairs != 0:
+                       p_en = 1.0*len(enWordsInClusDict[c_en])/enLen
+                       p_fr = 1.0*(len(frWordsInClusDict[origClass])-1)/frLen
+                       p_en_fr = 1.0*pairs/totLinks
+                       clusSimilarityDict[(c_en, origClass)] = p_en_fr*math.log(p_en_fr/(p_en*p_fr))
                 
                    newPairs = 0
                    for word_en in frToEnAlignedDict[wordToBeShifted]:
-                        if enWordToClusDict[word_en] == c_en:
+                       if enWordToClusDict[word_en] == c_en:
                            newPairs += 1
-                           
-                   clusSimilarityDict[(c_en, tempNewClass)] = 1.0*newPairs/(len(enWordsInClusDict[c_en])*(len(frWordsInClusDict[tempNewClass])+1))
+                        
+                   if newPairs != 0:
+                       p_en = 1.0*len(enWordsInClusDict[c_en])/enLen
+                       p_fr = 1.0*(len(frWordsInClusDict[tempNewClass])+1)/frLen
+                       p_en_fr = 1.0*newPairs/totLinks
+                       clusSimilarityDict[(c_en, tempNewClass)] = p_en_fr*math.log(p_en_fr/(p_en*p_fr))
                        
            for w_en in frToEnAlignedDict[wordToBeShifted]:
                c_en = enWordToClusDict[w_en]
                alignedWordsInClusPairDict[(c_en, origClass)].remove((w_en, wordToBeShifted))
+               if alignedWordsInClusPairDict[(c_en, origClass)] == []:
+                   del alignedWordsInClusPairDict[(c_en, origClass)]
+               
                if (c_en, tempNewClass) in alignedWordsInClusPairDict:
                    alignedWordsInClusPairDict[(c_en, tempNewClass)].append((w_en, wordToBeShifted))
                else:
@@ -457,7 +528,7 @@ def updateClassDistrib(lang, \
        
 def rearrangeClusters(lang, origPerplex,
                 clusUniCount, clusBiCount, wordToClusDict, wordsInClusDict, wordDict, bigramDict, nextWordDict, prevWordDict, \
-                enWordsInClusDict, frWordsInClusDict, enWordToClusDict, frWordToClusDict):
+                enWordsInClusDict, frWordsInClusDict, enWordToClusDict, frWordToClusDict, enWordDict, frWordDict):
     
     wordsExchanged = 0
     wordsDone = 0
@@ -474,7 +545,7 @@ def rearrangeClusters(lang, origPerplex,
                     possiblePerplex = calcTentativePerplex(lang, origPerplex, word, origClass, possibleNewClass,\
                     clusUniCount, clusBiCount, wordToClusDict, wordDict, bigramDict, nextWordDict, prevWordDict, \
                     enWordsInClusDict, frWordsInClusDict, \
-                    enWordToClusDict, frWordToClusDict)
+                    enWordToClusDict, frWordToClusDict, enWordDict, frWordDict)
                 
                     if possiblePerplex < currLeastPerplex:
                         currLeastPerplex = possiblePerplex
@@ -484,7 +555,7 @@ def rearrangeClusters(lang, origPerplex,
                 wordsExchanged += 1
                 updateClassDistrib(lang, \
                         enWordsInClusDict, frWordsInClusDict, enWordToClusDict, frWordToClusDict, word, origClass, tempNewClass, \
-                        clusUniCount, clusBiCount, wordToClusDict, wordsInClusDict, wordDict, bigramDict, nextWordDict, prevWordDict)
+                        clusUniCount, clusBiCount, wordToClusDict, wordsInClusDict, wordDict, bigramDict, nextWordDict, prevWordDict, enWordDict, frWordDict)
                     
         wordsDone += 1
         if wordsDone % 1000 == 0:    
@@ -518,13 +589,12 @@ def runOchClustering(
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         sys.stderr.write('\nRearranging English words...\n')
         
-        wordsExchangedEn = rearrangeClusters('en', origPerplex,
+        wordsExchanged = rearrangeClusters('en', origPerplex,
                 enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
                 enWordsInClusDict, frWordsInClusDict, \
-                enWordToClusDict, frWordToClusDict)
-                
-        wordsExchanged = wordsExchangedEn
-        sys.stderr.write('\nwordsExchanged: '+str(wordsExchangedEn)+'\n')
+                enWordToClusDict, frWordToClusDict, enWordDict, frWordDict)
+        
+        sys.stderr.write('\nwordsExchanged: '+str(wordsExchanged)+'\n')
                     
         origPerplex = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
                    enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
@@ -532,13 +602,12 @@ def runOchClustering(
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         sys.stderr.write('\nRearranging French words...\n')
                     
-        wordsExchangedFr = rearrangeClusters('fr', origPerplex,
+        wordsExchanged = rearrangeClusters('fr', origPerplex,
                 frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict, frWordDict, frBigramDict, frNextWordDict, frPrevWordDict, \
                 enWordsInClusDict, frWordsInClusDict, \
-                enWordToClusDict, frWordToClusDict)
+                enWordToClusDict, frWordToClusDict, enWordDict, frWordDict)
         
-        wordsExchanged += wordsExchangedFr 
-        sys.stderr.write('\nwordsExchanged: '+str(wordsExchangedFr)+'\n')
+        sys.stderr.write('\nwordsExchanged: '+str(wordsExchanged)+'\n')
             
     return enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict,\
            frClusUniCount, frClusBiCount, frWordToClusDict, frWordsInClusDict
@@ -564,10 +633,15 @@ def main(inputFileName, alignFileName, outputFileName, numClusInit, typeClusInit
     
     # All the bilingual data structures are global
     global alignDict, frToEnAlignedDict, enToFrAlignedDict, alignedWordsInClusPairDict, clusSimilarityDict
+    global sizeLang
     
     # Read the input file and get word counts
     alignDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
     frWordDict, frBigramDict, frNextWordDict, frPrevWordDict = readBilingualData(inputFileName, alignFileName)
+    
+    sizeLang = Counter()
+    sizeLang['fr'] = sum(val for (word, val) in frWordDict.iteritems())
+    sizeLang['en'] = sum(val for (word, val) in enWordDict.iteritems())
     
     # Initialise the cluster distribution
     enWordToClusDict, enWordsInClusDict = formInitialClusters(numClusInit, enWordDict, typeClusInit)
@@ -585,7 +659,7 @@ def main(inputFileName, alignFileName, outputFileName, numClusInit, typeClusInit
     # wordSimilarityDict = getWordSimilarity(alignDict, enWordDict, frWordDict)
     
     # Get cluster similarity of all possible pairs
-    clusSimilarityDict = getClusSimilarity(enClusUniCount, frClusUniCount, enWordsInClusDict, frWordsInClusDict)
+    clusSimilarityDict = getClusSimilarity(enWordDict, frWordDict, enClusUniCount, frClusUniCount, enWordsInClusDict, frWordsInClusDict)
     
     # Run the clustering algorithm and get new clusters    
     enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict,\

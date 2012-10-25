@@ -21,7 +21,8 @@ def nlogn(x):
 
 def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict):
     
-    outFile = open(outputFileName, 'w')
+    outFileEn = open(outputFileName+'.en', 'w')
+    outFileFr = open(outputFileName+'.fr', 'w')
     
     clusSimDict = {}
     for ((clus1, wordListEn), (clus2, wordListFr)) in zip(enWordsInClusDict.iteritems(), frWordsInClusDict.iteritems()):
@@ -36,15 +37,19 @@ def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict):
         wordListEn = enWordsInClusDict[clus]
         wordListFr = frWordsInClusDict[clus]
         
-        outFile.write(str(clus)+' ||| ')       
+        outFileEn.write(str(clus)+' ||| ')       
         for word in wordListEn:
-            outFile.write(word+' ')
-        outFile.write('\n')
+            outFileEn.write(word+' ')
+        outFileEn.write('\n')
         
-        outFile.write(str(clus)+' ||| ')       
+        outFileFr.write(str(clus)+' ||| ')       
         for word in wordListFr:
-            outFile.write(word+' ')
-        outFile.write('\n')
+            outFileFr.write(word+' ')
+        outFileFr.write('\n')
+        
+    outFileEn.close()
+    outFileFr.close()
+        
         
 def getNextPrevWordDict(bigramDict):
     
@@ -221,7 +226,7 @@ def calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWord
     for c, n in enUniCount.iteritems():
         if n != 0:
             sum2 += nlogn( n )
-            
+         
     for (c1, c2), nC1C2 in frBiCount.iteritems():
         if nC1C2 != 0 and c1 != c2:
             sum1 += nlogn( nC1C2 )
@@ -244,7 +249,8 @@ def calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWord
         p_en_fr = 1.0*links/totLinks
         if links != 0:
             sumClusEntrop += p_en_fr*math.log(p_en_fr/(p_en*p_fr))
-            
+    
+    sys.stderr.write('Mono factor:'+str(perplex)+' '+'Cross-lingual factor:'+str(power*sumClusEntrop)+'\n')
     perplex -= power*sumClusEntrop
         
     return perplex
