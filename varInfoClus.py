@@ -8,10 +8,10 @@ clusDict1 = {}
 vocabLen1 = 0
 for line in open(f1, 'r'):
     line = line.strip()
-    things = line.split()
+    things = line.split('|||')
     
     clusNum = things[0]
-    words = things[2:]
+    words = things[1:]
     
     clusDict1[clusNum] = words
     vocabLen1 += len(words)
@@ -20,10 +20,10 @@ clusDict2 = {}
 vocabLen2 = 0
 for line in open(f2, 'r'):
     line = line.strip()
-    things = line.split()
+    things = line.split('|||')
     
     clusNum = things[0]
-    words = things[2:]
+    words = things[1:]
     
     clusDict2[clusNum] = words
     vocabLen2 += len(words)
@@ -31,8 +31,28 @@ for line in open(f2, 'r'):
 if vocabLen1 != vocabLen2:
     print 'Dissimilar word collection'
     print vocabLen1, vocabLen2
-    sys.exit()
-    
+    print 'Making vocabulory same'
+    wordsLost = 0
+    v1 = []
+    v2 = []
+    for clus, wL in clusDict1.iteritems():
+	v1 += wL
+    for clus, wL in clusDict2.iteritems():
+	v2 += wL
+
+    for clus, wL in clusDict1.iteritems():
+	for word in set(v1) - set(v2):
+		if word in wL:
+			clusDict1[clus].remove(word)
+			wordsLost += 1
+    for clus, wL in clusDict2.iteritems():
+	for word in set(v2) - set(v1):
+		if word in wL:
+			clusDict2[clus].remove(word)
+			wordsLost += 1
+
+    print "Words lost:", wordsLost
+
 # VI(C, C') = H(C) + H(C') - 2*I(C, C')
 # H(C) = Sum over all k(clusters), P(k) log P(K)
 # I(C, C') = Sum over all K ( (Sum over all K')  P(K, K') * log( P(K, K') / ( P(K)*P(K') ) )
