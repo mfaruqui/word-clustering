@@ -724,8 +724,6 @@ def updateClassDistrib(lang, \
                    
                    frClusAlignedClusDict[c_fr] = getAlignedClasses(c_fr, frWordsInClusDict, frToEnAlignedDict, enWordToClusDict)
                    
-               # Re-compute the frWordAlignedClusDict for all words that
-               # were aligned to this word
                frWordAlignedClusDict[w_fr] = getWordAlignedClasses(w_fr, frToEnAlignedDict, enWordToClusDict)
                frWordToEnClusCount[(w_fr, origClass)] -= alignDict[(wordToBeShifted, w_fr)]
                frWordToEnClusCount[(w_fr, tempNewClass)] += alignDict[(wordToBeShifted, w_fr)]
@@ -759,8 +757,6 @@ def updateClassDistrib(lang, \
                    
                    enClusAlignedClusDict[c_en] = getAlignedClasses(c_en, enWordsInClusDict, enToFrAlignedDict, frWordToClusDict)
                
-               # Re-compute the enWordAlignedClusDict for all words that
-               # were aligned to this word    
                enWordAlignedClusDict[w_en] = getWordAlignedClasses(w_en, enToFrAlignedDict, frWordToClusDict)
                enWordToFrClusCount[(w_en, origClass)] -= alignDict[(w_en, wordToBeShifted)]
                enWordToFrClusCount[(w_en, tempNewClass)] += alignDict[(w_en, wordToBeShifted)]
@@ -828,7 +824,7 @@ def runOchClustering(
     origPerplex = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
                enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
     
-    while (wordsExchanged > 0.001 * (enWordVocabLen + frWordVocabLen)):
+    while (wordsExchanged > 0.001 * (enWordVocabLen + frWordVocabLen) and iterNum <= 50):
         iterNum += 1
         wordsExchanged = 0
         wordsDone = 0
