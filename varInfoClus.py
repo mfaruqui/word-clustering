@@ -11,7 +11,7 @@ for line in open(f1, 'r'):
     things = line.split('|||')
     
     clusNum = things[0]
-    words = things[1:]
+    words = things[1].split(' ')
     
     clusDict1[clusNum] = words
     vocabLen1 += len(words)
@@ -23,7 +23,7 @@ for line in open(f2, 'r'):
     things = line.split('|||')
     
     clusNum = things[0]
-    words = things[1:]
+    words = things[1].split(' ')
     
     clusDict2[clusNum] = words
     vocabLen2 += len(words)
