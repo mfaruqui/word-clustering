@@ -457,19 +457,10 @@ def calcTentativePerplex(lang, origPerplex, wordToBeShifted, origClass, tempNewC
             
             if alignedClass not in alignedClasses:
                 
-                if (tempNewClass, alignedClass) in alignedWordsInClusPairDict:
+                newSumCountPair = sumCountShiftedWordAligned
+                newSumWordClus = enClusUniCount[tempNewClass] + enWordDict[wordToBeShifted]
                     
-                    newSumCountPair = sumCountShiftedWordAligned
-                    newSumWordClus = enClusUniCount[tempNewClass] + enWordDict[wordToBeShifted]
-                    # You have alwready removed the old effect earlier now, just add the new effect 
-                    newPerplex -= math.log(newSumCountPair/(newSumWordClus*frClusUniCount[alignedClass]))
-                    
-                else: 
-                    
-                    newSumCountPair = sumCountShiftedWordAligned
-                    newSumWordClus = enClusUniCount[tempNewClass] + enWordDict[wordToBeShifted]
-                    
-                    newPerplex -= math.log(newSumCountPair/(newSumWordClus*frClusUniCount[alignedClass]))
+                newPerplex -= math.log(newSumCountPair/(newSumWordClus*frClusUniCount[alignedClass]))
                     
             elif alignedClass in alignedClasses:
                 
