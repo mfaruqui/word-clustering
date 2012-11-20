@@ -6,59 +6,7 @@ from math import exp
 import argparse
 from collections import Counter
 from collections import defaultdict
-
-def multi_dimensions(n, type):
-  """ Creates an n-dimension dictionary where the n-th dimension is of type 'type'
-  """  
-  if n<=1:
-    return type()
-  return defaultdict(lambda:multi_dimensions(n-1, type))
-
-def getInitialClusterMorphSum(ngramSimDict, wordsInClusDict):
-    
-    clusSumMorphDict = Counter()
-    
-    for c, wordList in wordsInClusDict.iteritems():
-        numPairs = 0.0
-        logProdMorph = 0.0
-        sumClus = 0.0
-        for i, w in enumerate(wordList):
-            tempSum = 0.0
-            for j in range(i+1, len(wordList)):
-                val = getWordSim(w, wordList[j])
-                if val != 0:
-                    numPairs += 1
-                    sumClus += val
-                    tempSum += val
-            if tempSum != 0.0:
-                logProdMorph += log(tempSum)
-        if numPairs != 0.0:        
-            logProdMorph -= numPairs*log(sumClus)
-            clusSumMorphDict[c] = (numPairs, sumClus, logProdMorph)
-        else:
-            clusSumMorphDict[c] = (0.0, 0.0, 0.0)
-            
-    return clusSumMorphDict
-                
-def readMorphSimFile(morphFileName, wordDict):
-    
-    sys.stderr.write('\nReading Morph Sim file...')
-    ngramSimDict = multi_dimensions(2, Counter)
-    for line in open(morphFileName, 'r'):
-        line = line.strip()
-        w1, w2, val = line.split()
-        val = float(val)
-        
-        if w1 in wordDict and w2 in wordDict:
-            ngramSimDict[w1][w2] = 2 * val / (len(w1)-2 + len(w2)-2) 
-        
-    sys.stderr.write("  Complete!\n")
-    
-    return ngramSimDict
-    
-def getWordSim(w1, w2):
-    
-    return max(ngramSimDict[w1][w2], ngramSimDict[w2][w1])
+import morph
 
 def getNextPrevWordDict(bigramDict):
      
@@ -140,7 +88,7 @@ def formInitialClusters(numClusInit, wordDict, typeClusInit):
             except KeyError:
                 wordsInClusDict[newClusNum] = [key]
                 
-            numWord += 1    
+            numWord += 1   
             
     return wordToClusDict, wordsInClusDict
     
@@ -166,23 +114,24 @@ def getClusterCounts(wordToClusDict, wordsInClusDict, wordDict, bigramDict):
 # Eq4 in Och 2003
 def calcPerplexity(uniCount, biCount, wordsInClusDict):
     
-    sum1 = 0
-    sum2 = 0
-    morph = 0
+    sum1 = 0.0
+    sum2 = 0.0
+    morphFactor = 0.0
     
     for (c1, c2), nC1C2 in biCount.iteritems():
         if nC1C2 != 0 and c1 != c2:
-            sum1 += nlogn( nC1C2 )
+            sum1 += nlogn( nC1C2/sizeLang )
     
     for c, n in uniCount.iteritems():
         if n != 0:
-            sum2 += nlogn( n )
-        
-        (sumClus, numPairs, logProdMorph) = clusSumMorphDict[c]
-        morph += logProdMorph
+            sum2 += nlogn( n/sizeLang )
+            
+        morphFactor += (1.0/len(uniCount))*morph.getClusMorphFactor(c)
     
-    print morph, 2 * sum2 - sum1
-    perplex = 2 * sum2 - sum1 - morphPower*morph
+    perplex = 2 * sum2 - sum1
+    print perplex, morphFactor
+    
+    perplex -= morphPower*morphFactor
     return perplex
 
 # Return the nlogn value if its already computed and stored in logValues
@@ -204,8 +153,8 @@ clusBiCount, wordToClusDict, wordsInClusDict, wordDict, bigramDict, nextWordDict
        newPerplex = origPerplex
        
        # Removing the effects of the old unigram cluster count from the perplexity
-       newPerplex -= 2 * nlogn(clusUniCount[origClass])
-       newPerplex -= 2 * nlogn(clusUniCount[tempNewClass])
+       newPerplex -= 2 * nlogn(clusUniCount[origClass]/sizeLang)
+       newPerplex -= 2 * nlogn(clusUniCount[tempNewClass]/sizeLang)
        
        # Finding only those bigram cluster counts that will be effected by the word transfer
        newBiCount = {}
@@ -239,62 +188,19 @@ clusBiCount, wordToClusDict, wordsInClusDict, wordDict, bigramDict, nextWordDict
        newOrigClassUniCount = clusUniCount[origClass] - wordDict[wordToBeShifted]
        newTempClassUniCount = clusUniCount[tempNewClass] + wordDict[wordToBeShifted]
        
-       newPerplex += 2 * nlogn(newOrigClassUniCount)
-       newPerplex += 2 * nlogn(newTempClassUniCount)
+       newPerplex += 2 * nlogn(newOrigClassUniCount/sizeLang)
+       newPerplex += 2 * nlogn(newTempClassUniCount/sizeLang)
        
        for (c1, c2), val in newBiCount.iteritems():
             if c1 != c2:
                 # removing the effect of old cluster bigram counts
-                newPerplex += nlogn(clusBiCount[(c1, c2)])
+                newPerplex += nlogn(clusBiCount[(c1, c2)]/sizeLang)
                 # adding the effect of new cluster bigram counts
-                newPerplex -= nlogn(val)
+                newPerplex -= nlogn(val/sizeLang)
        
-       # Delete contribution of the old cluster
-       deltaMorph = 0.0
-       wordList = wordsInClusDict[origClass]
+       deltaMorph = morphPower*(1.0/len(clusUniCount))*morph.getChangeInMorph(wordToBeShifted, origClass, tempNewClass)
        
-       (clusSumMorph, numPairs, logProdMorph) = clusSumMorphDict[origClass]
-       if numPairs != 0:
-   
-           deltaMorph += logProdMorph    
-
-           newClusSumMorph = clusSumMorph
-           newNumPairs = numPairs
-           
-           for i, w in enumerate(wordList):
-               if w != wordToBeShifted:
-                   newClusSumMorph -= getWordSim(w, wordToBeShifted)#ngramSimDict[(w, wordToBeShifted)]
-                   newNumPairs += 1
-                   
-           if newClusSumMorph != 0:
-               
-               newLogProdMorph = logProdMorph + numPairs*log(clusSumMorph) - newNumPairs*log(newClusSumMorph)
-               deltaMorph -= newLogProdMorph
-                          
-       wordList = wordsInClusDict[tempNewClass]
-                  
-       (clusSumMorph, numPairs, logProdMorph) = clusSumMorphDict[tempNewClass]
-       
-       if numPairs != 0:
-           deltaMorph += logProdMorph    
-       
-       newClusSumMorph = clusSumMorph
-       newNumPairs = numPairs
-       
-       for i, w in enumerate(wordList):
-           if ngramSimDict[(w, wordToBeShifted)] != 0:
-               newClusSumMorph += getWordSim(w, wordToBeShifted)#ngramSimDict[(w, wordToBeShifted)]
-               newNumPairs += 1
-       
-       if newNumPairs != 0:            
-           if numPairs != 0:
-               newLogProdMorph = logProdMorph + numPairs*log(clusSumMorph) - newNumPairs*log(newClusSumMorph)
-           else:
-               newLogProdMorph = logProdMorph - newNumPairs*log(newClusSumMorph)
-           
-           deltaMorph -= newLogProdMorph
-       
-       return newPerplex + morphPower*deltaMorph
+       return newPerplex + deltaMorph
         
 def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
             clusBiCount, wordToClusDict, wordsInClusDict, wordDict, bigramDict, nextWordDict, prevWordDict):
@@ -316,51 +222,12 @@ def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
                clusBiCount[(c, origClass)] -= bigramDict[(w, wordToBeShifted)]
                clusBiCount[(c, tempNewClass)] += bigramDict[(w, wordToBeShifted)]
                
-               
-       wordList = wordsInClusDict[origClass]
-       (clusSumMorph, numPairs, logProdMorph) = clusSumMorphDict[origClass]
-       
-       if numPairs != 0:
-           
-           newClusSumMorph = clusSumMorph
-           newNumPairs = numPairs
-           
-           for i, word in enumerate(wordList):
-               if ngramSimDict[(word, wordToBeShifted)] != 0:
-                   newClusSumMorph -= getWordSim(w, wordToBeShifted)#ngramSimDict[(word, wordToBeShifted)]
-                   newNumPairs -= 1
-       
-           if newNumPairs != 0:        
-               newLogProdMorph = logProdMorph + numPairs*log(clusSumMorph) - newNumPairs*log(newClusSumMorph)
-               clusSumMorphDict[origClass] = (newClusSumMorph, newNumPairs, newLogProdMorph)
-           else:   
-               clusSumMorphDict[origClass] = (0, 0, 0)       
-               
-       wordList = wordsInClusDict[tempNewClass]
-       (clusSumMorph, numPairs, logProdMorph) = clusSumMorphDict[tempNewClass]
-       
-       newClusSumMorph = clusSumMorph
-       newNumPairs = numPairs
-           
-       for i, word in enumerate(wordList):
-           if ngramSimDict[(word, wordToBeShifted)] != 0:
-               newClusSumMorph += getWordSim(w, wordToBeShifted)#ngramSimDict[(word, wordToBeShifted)]
-               newNumPairs += 1
-       
-       if newNumPairs != 0:
-           if numPairs != 0:
-               newLogProdMorph = logProdMorph + numPairs*log(clusSumMorph) - newNumPairs*log(newClusSumMorph)
-           else:
-               newLogProdMorph = logProdMorph - newNumPairs*log(newClusSumMorph)
-           
-           clusSumMorphDict[tempNewClass] = (newClusSumMorph, newNumPairs, newLogProdMorph)
-       else:   
-           clusSumMorphDict[tempNewClass] = (0, 0, 0)
-                                              
        wordToClusDict[wordToBeShifted] = tempNewClass
        wordsInClusDict[origClass].remove(wordToBeShifted)
        wordsInClusDict[tempNewClass].append(wordToBeShifted)
        
+       morph.updateMorphData(wordToBeShifted, origClass, tempNewClass)
+                      
        return
 
 # Implementation of Och 1999 clustering using the     
@@ -372,7 +239,7 @@ def runOchClustering(wordDict, bigramDict, clusUniCount, clusBiCount,\
     iterNum = 0
     wordVocabLen = len(wordDict.keys())
     
-    while (wordsExchanged > 0.001 * wordVocabLen and iterNum <= 50):
+    while (wordsExchanged > 0.001 * wordVocabLen and iterNum <= 25):
         iterNum += 1
         wordsExchanged = 0
         wordsDone = 0
@@ -423,23 +290,21 @@ def printNewClusters(outputFileName, wordsInClusDict):
             outFile.write(word+' ')
         outFile.write('\n')
     
-def main(inputFileName, morphFileName, outputFileName, numClusInit, typeClusInit):
+def main(inputFileName, outputFileName, numClusInit, typeClusInit):
     
-    global ngramSimDict, clusSumMorphDict
-    global morphPower
-    morphPower = 1
+    global sizeLang, numWords
     
     # Read the input file and get word counts
     wordDict, bigramDict, nextWordDict, prevWordDict = readInputFile(inputFileName)
+
+    sizeLang = 1.0*sum(val for word, val in wordDict.iteritems())
+    numWords = 1.0*len(wordDict)
     
     # Initialise the cluster distribution
     wordToClusDict, wordsInClusDict = formInitialClusters(numClusInit, wordDict, typeClusInit)
     
-    # Reading the morph file name
-    ngramSimDict = readMorphSimFile(morphFileName, wordDict)
-    
-    # Get initial cluster moprh sum counts
-    clusSumMorphDict = getInitialClusterMorphSum(ngramSimDict, wordsInClusDict)
+    #transMat, priorMat = morph.makeTransitionProbMatrix(wordDict, wordsInClusDict)
+    morph.makeTransitionProbMatrix(wordDict, wordsInClusDict)
     
     # Get counts of the initial cluster configuration
     clusUniCount, clusBiCount = getClusterCounts(wordToClusDict, wordsInClusDict, wordDict, bigramDict)
@@ -453,13 +318,15 @@ def main(inputFileName, morphFileName, outputFileName, numClusInit, typeClusInit
     printNewClusters(outputFileName, wordsInClusDict)
     
 if __name__ == "__main__":
+    
+    global morphPower
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--inputfile", type=str, help="Input file containing word bigram and unigram counts")
-    parser.add_argument("-m", "--morphfile", type=str, help="Morphological similarity file")
-    parser.add_argument("-n", "--numclus", type=int, help="No. of clusters to be formed")
+    parser.add_argument("-n", "--numclus", type=int, default=100, help="No. of clusters to be formed")
     parser.add_argument("-o", "--outputfile", type=str, help="Output file with word clusters")
     parser.add_argument("-t", "--type", type=int, choices=[0, 1], default=1, help="type of cluster initialization")
+    parser.add_argument("-m", "--morphpower", type=float, default=0.001, help="Morph scaling factor")
                         
     args = parser.parse_args()
     
@@ -467,6 +334,6 @@ if __name__ == "__main__":
     numClusInit = args.numclus
     outputFileName = args.outputfile
     typeClusInit = args.type
-    morphFileName = args.morphfile
+    morphPower = args.morphpower
     
-    main(inputFileName, morphFileName, outputFileName, numClusInit, typeClusInit)
+    main(inputFileName, outputFileName, numClusInit, typeClusInit)
