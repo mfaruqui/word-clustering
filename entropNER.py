@@ -24,17 +24,7 @@ def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict, enWor
     outFileEn = open(outputFileName+'.en', 'w')
     outFileFr = open(outputFileName+'.fr', 'w')
     
-    clusSimDict = {}
-    for ((clus1, wordListEn), (clus2, wordListFr)) in zip(enWordsInClusDict.iteritems(), frWordsInClusDict.iteritems()):
-        if alignedWordsInClusPairDict.has_key((clus1, clus2)):
-            clusSimDict[clus1] = 1.0*len(alignedWordsInClusPairDict[(clus1, clus2)])/(len(wordListEn)*len(wordListFr))
-        else:
-            clusSimDict[clus1] = 0.0
-        
-    for clus, val in sorted(clusSimDict.items(), key=itemgetter(1), reverse=True):
-        
-        wordListEn = enWordsInClusDict[clus]
-        wordListFr = frWordsInClusDict[clus]
+    for clus, wordListEn in enWordsInClusDict.iteritems():
         
         sortedEnDict = {}
         for word in wordListEn:
@@ -44,6 +34,13 @@ def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict, enWor
         for (word, val) in sorted(sortedEnDict.items(), key = itemgetter(1), reverse = True):
             sortedEnList.append(word)
             
+        outFileEn.write(str(clus)+' ||| ')       
+        for word in sortedEnList:
+            outFileEn.write(word+' ')
+        outFileEn.write('\n')
+        
+    for clus, wordListFr in frWordsInClusDict.iteritems():
+            
         sortedFrDict = {}
         for word in wordListFr:
             sortedFrDict[word] = frWordDict[word]
@@ -51,11 +48,6 @@ def printNewClusters(outputFileName, enWordsInClusDict, frWordsInClusDict, enWor
         sortedFrList = []    
         for (word, val) in sorted(sortedFrDict.items(), key = itemgetter(1), reverse = True):
             sortedFrList.append(word)
-        
-        outFileEn.write(str(clus)+' ||| ')       
-        for word in sortedEnList:
-            outFileEn.write(word+' ')
-        outFileEn.write('\n')
         
         outFileFr.write(str(clus)+' ||| ')       
         for word in sortedFrList:
@@ -384,6 +376,8 @@ def calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWord
     for c, n in enUniCount.iteritems():
         if n != 0:
             sum2 += nlogn( n/sizeLang["en"] )
+    
+    print sum1, sum2
             
     for (c1, c2), nC1C2 in frBiCount.iteritems():
         if nC1C2 != 0 and c1 != c2:
@@ -392,6 +386,8 @@ def calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWord
     for c, n in frUniCount.iteritems():
         if n != 0:
             sum2 += nlogn( n/sizeLang["fr"] )
+    
+    print sum1, sum2
             
     perplex = 2 * sum2 - sum1
     
@@ -828,27 +824,23 @@ def runOchClustering(
     origMono, origBi = calcPerplexity(enWordToClusDict, frWordToClusDict, enWordsInClusDict, frWordsInClusDict,\
                enWordDict, frWordDict, enClusUniCount, enClusBiCount, frClusUniCount, frClusBiCount)
     
-    while ( (wordsExchanged > 0.001 * (enWordVocabLen + frWordVocabLen) or iterNum < 10) and iterNum <= 25):
+    while ( (wordsExchanged > 0.001 * (frWordVocabLen) or iterNum < 10) and iterNum <= 3):
         iterNum += 1
         wordsExchanged = 0
         wordsDone = 0
     
-        #origPerplex = origMono + origBi
-    
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Mono: '+str(origMono)+' Bi: '+str(origBi)+' Total: '+str(origMono + origBi)+'\n')
-        sys.stderr.write('\nRearranging English words...\n')
+        #sys.stderr.write('\nRearranging English words...\n')
         
-        wordsExchangedEn, origMono, origBi = rearrangeClusters('en', origMono, origBi,
-                enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
-                enWordsInClusDict, frWordsInClusDict, \
-                enWordToClusDict, frWordToClusDict, enWordDict, frWordDict,\
-                enClusUniCount, frClusUniCount)
+        #wordsExchangedEn, origMono, origBi = rearrangeClusters('en', origMono, origBi,
+        #        enClusUniCount, enClusBiCount, enWordToClusDict, enWordsInClusDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
+        #        enWordsInClusDict, frWordsInClusDict, \
+        #        enWordToClusDict, frWordToClusDict, enWordDict, frWordDict,\
+        #        enClusUniCount, frClusUniCount)
         
-        #origPerplex = origMono + origBi
-        
-        wordsExchanged = wordsExchangedEn
-        sys.stderr.write('\nwordsExchanged: '+str(wordsExchangedEn)+'\n')
-        sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Mono: '+str(origMono)+' Bi: '+str(origBi)+' Total: '+str(origMono + origBi)+'\n')
+        #wordsExchanged = wordsExchangedEn
+        #sys.stderr.write('\nwordsExchanged: '+str(wordsExchangedEn)+'\n')
+        #sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Mono: '+str(origMono)+' Bi: '+str(origBi)+' Total: '+str(origMono + origBi)+'\n')
         sys.stderr.write('\nRearranging French words...\n')
                     
         wordsExchangedFr, origMono, origBi = rearrangeClusters('fr', origMono, origBi,
@@ -880,6 +872,26 @@ def getBothWaysAlignment():
             
     return enToFr, frToEn
     
+def readPOSClusters(POSFileName):
+    
+    wordsInClusDict = {}
+    wordToClusDict = {}
+    
+    for line in open(POSFileName, 'r'):
+        line = line.strip()
+        pos, allWords = line.split('|||')
+        pos = pos.strip()
+        
+        for word in allWords.split():
+            if pos in wordsInClusDict:
+                wordsInClusDict[pos].append(word)
+            else:
+                wordsInClusDict[pos] = [word]
+            
+            wordToClusDict[word] = pos
+            
+    return wordToClusDict, wordsInClusDict
+    
 def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileName, numClusInit, typeClusInit):
     
     # All the bilingual data structures are global
@@ -898,13 +910,14 @@ def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileN
     frWordDict, frBigramDict, frNextWordDict, frPrevWordDict = readBilingualData(inputFileName, alignFileName, mono1FileName, mono2FileName)
     
     sizeLang = {}
-    sizeLang['en'] = sum(val for word, val in enWordDict.iteritems())
-    sizeLang['fr'] = sum(val for word, val in frWordDict.iteritems())
+    sizeLang['en'] = 1.0*sum(val for word, val in enWordDict.iteritems())
+    sizeLang['fr'] = 1.0*sum(val for word, val in frWordDict.iteritems())
     
     sumAllAlignLinks = 1.0*sum(val for (w1, w2), val in alignDict.iteritems())
     
     # Initialise the cluster distribution
-    enWordToClusDict, enWordsInClusDict = formInitialClusters(numClusInit, enWordDict, typeClusInit)
+    #enWordToClusDict, enWordsInClusDict = formInitialClusters(numClusInit, enWordDict, typeClusInit)
+    enWordToClusDict, enWordsInClusDict = readPOSClusters(POSFileName)
     frWordToClusDict, frWordsInClusDict = formInitialClusters(numClusInit, frWordDict, typeClusInit)
     
     # Get counts of the initial cluster configuration
@@ -947,6 +960,7 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--alignfile", type=str, help="alignment file of the parallel corpus")
     parser.add_argument("-m1", "--monofile1", type=str, default='', help="Monolingual file of langauge 1")
     parser.add_argument("-m2", "--monofile2", type=str, default='', help="Monolingual file of langauge 2")
+    parser.add_argument("-pos", "--posfile", type=str, default='', help="POS file of langauge 1")
     parser.add_argument("-l", "--filelength", type=int, default=1000000000, help="max number of lines to be read")
     parser.add_argument("-n", "--numclus", type=int, default=100, help="No. of clusters to be formed")
     parser.add_argument("-o", "--outputfile", type=str, help="Output file with word clusters")
@@ -965,7 +979,9 @@ if __name__ == "__main__":
     
     global power
     global fileLength
+    global POSFileName
     power = args.power
     fileLength = args.filelength
+    POSFileName = args.posfile
     
     main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileName, numClusInit, typeClusInit)

@@ -72,30 +72,37 @@ def getNextPrevWordDict(bigramDict):
               
     return nextWordDict, prevWordDict
 
-def readBilingualData(bilingualFileName, alignFileName):
+def readBilingualData(bilingualFileName, alignFileName, mono1FileName, mono2FileName):
     
     enWordDict = Counter()
     enBigramDict = Counter()
     frWordDict = Counter()
     frBigramDict = Counter()
     alignDict = Counter()
-    sys.stderr.write('\nReading parallel and alignment file...\n')
+    sys.stderr.write('\nReading parallel and alignment file...')
+    
+    lineNum = 0
     
     for wordLine, alignLine in zip(open(bilingualFileName,'r'), open(alignFileName, 'r')):
+        
+        lineNum += 1
+        
+        if lineNum > fileLength:
+            break
         
         en, fr = wordLine.split('|||')
         en = en.strip()
         fr = fr.strip()
-        enWords = en.split()
-        frWords = fr.split()
         
+        enWords = en.split()
         prevWord = ''
         for word in enWords:
             enWordDict[word] += 1.0
             if prevWord != '':
                 enBigramDict[(prevWord, word)] += 1.0
             prevWord = word
-            
+        
+        frWords = fr.split()   
         prevWord = ''
         for word in frWords:
             frWordDict[word] += 1.0
@@ -108,7 +115,33 @@ def readBilingualData(bilingualFileName, alignFileName):
             enWord = enWords[int(en)]
             frWord = frWords[int(fr)]
             alignDict[(enWord, frWord)] += 1.0
-     
+            
+    sys.stderr.write(' Complete!\n')
+            
+    if mono1FileName != '':
+        sys.stderr.write("\nReading monolingual file of L1...")        
+        for line in open(mono1FileName, 'r'):
+            line = line.strip()
+            for word in line.split():
+                enWordDict[word] += 1.0
+                if prevWord != '':
+                    enBigramDict[(prevWord, word)] += 1.0
+                prevWord = word
+                
+        sys.stderr.write(' Complete!\n')
+                
+    if mono2FileName != '':
+        sys.stderr.write("\nReading monolingual file of L2...")    
+        for line in open(mono2FileName, 'r'):
+            line = line.strip()
+            for word in line.split():
+                frWordDict[word] += 1.0
+                if prevWord != '':
+                    frBigramDict[(prevWord, word)] += 1.0
+                prevWord = word
+                
+        sys.stderr.write(' Complete!\n')
+
     enNextWordDict, enPrevWordDict = getNextPrevWordDict(enBigramDict)    
     frNextWordDict, frPrevWordDict = getNextPrevWordDict(frBigramDict)
     
@@ -758,7 +791,7 @@ def getBothWaysAlignment():
             
     return enToFr, frToEn
     
-def main(inputFileName, alignFileName, outputFileName, numClusInit, typeClusInit):
+def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileName, numClusInit, typeClusInit):
     
     # All the bilingual data structures are global
     global alignDict, frToEnAlignedDict, enToFrAlignedDict, alignedWordsInClusPairDict, clusSimilarityDict
@@ -769,7 +802,7 @@ def main(inputFileName, alignFileName, outputFileName, numClusInit, typeClusInit
     
     # Read the input file and get word counts
     alignDict, enWordDict, enBigramDict, enNextWordDict, enPrevWordDict, \
-    frWordDict, frBigramDict, frNextWordDict, frPrevWordDict = readBilingualData(inputFileName, alignFileName)
+    frWordDict, frBigramDict, frNextWordDict, frPrevWordDict = readBilingualData(inputFileName, alignFileName, mono1FileName, mono2FileName)
     
     # Initialise the cluster distribution
     enWordToClusDict, enWordsInClusDict = formInitialClusters(numClusInit, enWordDict, typeClusInit)
@@ -809,6 +842,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--inputfile", type=str, help="Joint parallel file of two languages; sentences separated by |||")
     parser.add_argument("-a", "--alignfile", type=str, help="alignment file of the parallel corpus")
+    parser.add_argument("-m1", "--monofile1", type=str, default='', help="Monolingual file of langauge 1")
+    parser.add_argument("-m2", "--monofile2", type=str, default='', help="Monolingual file of langauge 2")
+    parser.add_argument("-l", "--filelength", type=int, default=1000000000, help="max number of lines to be read")
     parser.add_argument("-n", "--numclus", type=int, default=100, help="No. of clusters to be formed")
     parser.add_argument("-o", "--outputfile", type=str, help="Output file with word clusters")
     parser.add_argument("-t", "--type", type=int, choices=[0, 1], default=1, help="type of cluster initialization")
@@ -818,11 +854,15 @@ if __name__ == "__main__":
     
     inputFileName = args.inputfile
     alignFileName = args.alignfile
+    mono1FileName = args.monofile1
+    mono2FileName = args.monofile2
     numClusInit = args.numclus
     outputFileName = args.outputfile
     typeClusInit = args.type
     
     global power
+    global fileLength
     power = args.power
+    fileLength = args.filelength
     
-    main(inputFileName, alignFileName, outputFileName, numClusInit, typeClusInit)
+    main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileName, numClusInit, typeClusInit)
