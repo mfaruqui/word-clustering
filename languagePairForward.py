@@ -1,5 +1,4 @@
 import sys
-from collections import Counter
 from operator import itemgetter
 from math import log
 
@@ -11,8 +10,8 @@ class LanguagePairForward:
         self.edgeSumInClus = {}
         self.wordAlignedClusDict = {}
         self.clusAlignedClusDict = {} 
-        self.wordToClusCount = Counter()
-        self.wordEdgeCount = Counter()
+        self.wordToClusCount = {}
+        self.wordEdgeCount = {}
         self.reverse = None
         
         self.first = fromObj
@@ -82,17 +81,20 @@ class LanguagePairForward:
         for w_en, frWordList in self.wordToWordAlignedDict.iteritems():
             for w_fr in frWordList:
                 c_fr = self.second.wordToClusDict[w_fr]
-                #if (w_en, c_fr) in self.wordToClusCount:
-                self.wordToClusCount[(w_en, c_fr)] += self.common.alignDict[(w_en, w_fr)]
-                #else:
-                #    self.wordToClusCount[(w_en, c_fr)] = self.common.alignDict[(w_en, w_fr)]
+                if (w_en, c_fr) in self.wordToClusCount:
+                    self.wordToClusCount[(w_en, c_fr)] += self.common.alignDict[(w_en, w_fr)]
+                else:
+                    self.wordToClusCount[(w_en, c_fr)] = self.common.alignDict[(w_en, w_fr)]
             
         return
     
     def getWordEdgeCount(self):
     
         for (w_en, c_fr), val in self.wordToClusCount.iteritems():
-            self.wordEdgeCount[w_en] += val
+            if w_en in self.wordEdgeCount:
+                self.wordEdgeCount[w_en] += val
+            else:
+                self.wordEdgeCount[w_en] = val
         
         return
             
@@ -159,7 +161,10 @@ class LanguagePairForward:
                 # Re-compute the frWordAlignedClusDict for all words that were aligned to this word
                 self.reverse.wordAlignedClusDict[w_fr] = self.reverse.getWordAlignedClasses(w_fr)
                 self.reverse.wordToClusCount[(w_fr, origClass)] -= self.common.alignDict[(wordToBeShifted, w_fr)]
-                self.reverse.wordToClusCount[(w_fr, newClass)] += self.common.alignDict[(wordToBeShifted, w_fr)]
+                if (w_fr, newClass) in self.reverse.wordToClusCount:
+                    self.reverse.wordToClusCount[(w_fr, newClass)] += self.common.alignDict[(wordToBeShifted, w_fr)]
+                else:
+                    self.reverse.wordToClusCount[(w_fr, newClass)] = self.common.alignDict[(wordToBeShifted, w_fr)]
                
             self.clusAlignedClusDict[origClass] = self.getAlignedClasses(origClass)
             self.clusAlignedClusDict[newClass] = self.getAlignedClasses(newClass)
@@ -223,7 +228,10 @@ class LanguagePairForward:
             for alignedClass in alignedClasses:
             
                 sumCountPair = self.common.sumAlignedWordsInClusPairDict[(tempNewClass, alignedClass)]
-                sumCountShiftedWordAligned = self.wordToClusCount[(wordToBeShifted, alignedClass)]
+                if (wordToBeShifted, alignedClass) in self.wordToClusCount:
+                    sumCountShiftedWordAligned = self.wordToClusCount[(wordToBeShifted, alignedClass)]
+                else:
+                    sumCountShiftedWordAligned = 0.0
             
                 old_px = self.edgeSumInClus[tempNewClass]/self.common.sumAllAlignLinks
                 old_py = self.reverse.edgeSumInClus[alignedClass]/self.common.sumAllAlignLinks

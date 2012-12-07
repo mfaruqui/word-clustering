@@ -39,8 +39,10 @@ def rearrangeClusters(origMono, origBi, lang, langPair, power):
                 if possibleNewClass != origClass:
                     
                     deltaMono = lang.calcTentativePerplex(word, origClass, possibleNewClass)
-                    deltaBi = langPair.calcTentativePerplex(word, origClass, possibleNewClass)
-                    
+                    if power != 0:
+                        deltaBi = langPair.calcTentativePerplex(word, origClass, possibleNewClass)
+                    else:
+                        deltaBi = 0.0
                     tempMono = deltaMono + origMono
                     tempBi = power*deltaBi + origBi
                     
@@ -65,7 +67,8 @@ def rearrangeClusters(origMono, origBi, lang, langPair, power):
                 
                 wordsExchanged += 1
                 lang.updateDistribution(word, origClass, tempNewClass)
-                langPair.updateDistribution(word, origClass, tempNewClass)
+                if power != 0:
+                    langPair.updateDistribution(word, origClass, tempNewClass)
                 
                 #print langPair.wordEdgeCount[word], langPair.edgeSumInClus[origClass], langPair.edgeSumInClus[tempNewClass]
                 #print lang.clusUniCount[origClass], lang.clusUniCount[tempNewClass]
@@ -134,10 +137,10 @@ def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileN
                                            
     del alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict
     
-    print lang1.wordToClusDict
-    print lang1.wordsInClusDict
-    print lang2.wordToClusDict
-    print lang2.wordsInClusDict
+    #print lang1.wordToClusDict
+    #print lang1.wordsInClusDict
+    #print lang2.wordToClusDict
+    #print lang2.wordsInClusDict
     
     #print lang1.clusUniCount
     #print lang1.clusBiCount
@@ -146,10 +149,10 @@ def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileN
     # Run the clustering algorithm and get new clusters    
     runOchClustering(lang1, lang2, lang12, lang21, power)
     
-    print lang1.wordToClusDict
-    print lang1.wordsInClusDict
-    print lang2.wordToClusDict
-    print lang2.wordsInClusDict
+    #print lang1.wordToClusDict
+    #print lang1.wordsInClusDict
+    #print lang2.wordToClusDict
+    #print lang2.wordsInClusDict
     
     # Print the clusters
     printClusters(outputFileName, lang1, lang2, lang12)

@@ -1,4 +1,3 @@
-from collections import Counter
 from math import log
 from operator import itemgetter
 
@@ -15,14 +14,14 @@ class Language:
         self.sizeLang = 0
         self.vocabLen = 0
         
-        self.wordDict = Counter()
-        self.bigramDict = Counter()
+        self.wordDict = {}#Counter()
+        self.bigramDict = {}#Counter()
         self.wordToClusDict = {}
         self.wordsInClusDict = {}
         self.nextWordDict = {}
         self.prevWordDict = {}
-        self.clusUniCount = Counter()
-        self.clusBiCount = Counter()
+        self.clusUniCount = {}#Counter()
+        self.clusBiCount = {}#Counter()
     
         self.numClusters = numClusInit
         self.typeClusInit = typeClusInit
@@ -72,7 +71,7 @@ class Language:
                     self.wordsInClusDict[newClusNum] = [key]
                 numWord += 1
                 
-                print numWord-1, key, newClusNum
+                #print numWord-1, key, newClusNum
         return
         
     def initializeClusterCounts(self):
@@ -80,12 +79,18 @@ class Language:
         # Get initial cluster counts
         for word in self.wordDict.iterkeys():
             clusNum = self.wordToClusDict[word]
-            self.clusUniCount[clusNum] += self.wordDict[word]
+            if clusNum in self.clusUniCount:
+                self.clusUniCount[clusNum] += self.wordDict[word]
+            else:
+                self.clusUniCount[clusNum] = self.wordDict[word]
     
         for (w1, w2) in self.bigramDict.iterkeys():
             c1 = self.wordToClusDict[w1]
             c2 = self.wordToClusDict[w2]
-            self.clusBiCount[(c1, c2)] += self.bigramDict[(w1, w2)]
+            if (c1, c2) in self.clusBiCount:
+                self.clusBiCount[(c1, c2)] += self.bigramDict[(w1, w2)]
+            else:
+                self.clusBiCount[(c1, c2)] = self.bigramDict[(w1, w2)]
             
         return
         
@@ -119,13 +124,19 @@ class Language:
             for w in self.nextWordDict[wordToBeShifted]:
                c = self.wordToClusDict[w]
                self.clusBiCount[(origClass, c)] -= self.bigramDict[(wordToBeShifted, w)]
-               self.clusBiCount[(newClass, c)] += self.bigramDict[(wordToBeShifted, w)]
+               if (newClass, c) in self.clusBiCount:
+                   self.clusBiCount[(newClass, c)] += self.bigramDict[(wordToBeShifted, w)]
+               else:
+                   self.clusBiCount[(newClass, c)] = self.bigramDict[(wordToBeShifted, w)]
               
         if self.prevWordDict.has_key(wordToBeShifted):
             for w in self.prevWordDict[wordToBeShifted]:
                 c = self.wordToClusDict[w]
                 self.clusBiCount[(c, origClass)] -= self.bigramDict[(w, wordToBeShifted)]
-                self.clusBiCount[(c, newClass)] += self.bigramDict[(w, wordToBeShifted)]
+                if (c, newClass) in self.clusBiCount:
+                    self.clusBiCount[(c, newClass)] += self.bigramDict[(w, wordToBeShifted)]
+                else:
+                    self.clusBiCount[(c, newClass)] = self.bigramDict[(w, wordToBeShifted)]
                                               
         self.wordToClusDict[wordToBeShifted] = newClass
         self.wordsInClusDict[origClass].remove(wordToBeShifted)
@@ -151,8 +162,10 @@ class Language:
                
                 if (tempNewClass, c) in newBiCount:
                     newBiCount[(tempNewClass, c)] += self.bigramDict[(wordToBeShifted, w)]
+                elif (tempNewClass, c) in self.clusBiCount:
+                    newBiCount[(tempNewClass, c)] = self.clusBiCount[(tempNewClass, c)] + self.bigramDict[(wordToBeShifted, w)]
                 else:
-                    newBiCount[(tempNewClass, c)] = self.clusBiCount[(tempNewClass, c)] + self.bigramDict[(wordToBeShifted, w)]      
+                    newBiCount[(tempNewClass, c)] = self.bigramDict[(wordToBeShifted, w)]
     
         if self.prevWordDict.has_key(wordToBeShifted):
             for w in self.prevWordDict[wordToBeShifted]:
@@ -164,8 +177,10 @@ class Language:
                
                 if (c, tempNewClass) in newBiCount:
                     newBiCount[(c, tempNewClass)] += self.bigramDict[(w, wordToBeShifted)]
-                else:
+                elif (c, tempNewClass) in self.clusBiCount:
                     newBiCount[(c, tempNewClass)] = self.clusBiCount[(c, tempNewClass)] + self.bigramDict[(w, wordToBeShifted)]
+                else:
+                    newBiCount[(c, tempNewClass)] = self.bigramDict[(w, wordToBeShifted)]
         
         #print newBiCount, self.sizeLang, self.clusUniCount[origClass], self.clusUniCount[tempNewClass], self.wordDict[wordToBeShifted]
         
@@ -179,7 +194,8 @@ class Language:
         for (c1, c2), val in newBiCount.iteritems():
              if c1 != c2:
                  # removing the effect of old cluster bigram counts
-                 deltaPerplex += nlogn(self.clusBiCount[(c1, c2)]/self.sizeLang)
+                 if (c1, c2) in self.clusBiCount:
+                     deltaPerplex += nlogn(self.clusBiCount[(c1, c2)]/self.sizeLang)
                  # adding the effect of new cluster bigram counts
                  deltaPerplex -= nlogn(val/self.sizeLang)
                  
