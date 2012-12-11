@@ -137,22 +137,8 @@ def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileN
                                            
     del alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict
     
-    #print lang1.wordToClusDict
-    #print lang1.wordsInClusDict
-    #print lang2.wordToClusDict
-    #print lang2.wordsInClusDict
-    
-    #print lang1.clusUniCount
-    #print lang1.clusBiCount
-    #print lang2.clusUniCount
-    #print lang2.clusBiCount
     # Run the clustering algorithm and get new clusters    
     runOchClustering(lang1, lang2, lang12, lang21, power)
-    
-    #print lang1.wordToClusDict
-    #print lang1.wordsInClusDict
-    #print lang2.wordToClusDict
-    #print lang2.wordsInClusDict
     
     # Print the clusters
     printClusters(outputFileName, lang1, lang2, lang12)

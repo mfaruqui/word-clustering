@@ -14,14 +14,15 @@ class Language:
         self.sizeLang = 0
         self.vocabLen = 0
         
-        self.wordDict = {}#Counter()
-        self.bigramDict = {}#Counter()
+        self.wordDict = {}
+        self.bigramDict = {}
         self.wordToClusDict = {}
         self.wordsInClusDict = {}
         self.nextWordDict = {}
         self.prevWordDict = {}
-        self.clusUniCount = {}#Counter()
-        self.clusBiCount = {}#Counter()
+        self.clusUniCount = {}
+        self.clusBiCount = {}
+        self.morph = None
     
         self.numClusters = numClusInit
         self.typeClusInit = typeClusInit
@@ -38,6 +39,10 @@ class Language:
         self.formClusters()
         self.formPrevNextWordDict()
         self.initializeClusterCounts()
+        
+    def setMorphologyObject(self, morphObj):
+        
+        self.morph = morphObj
             
     def formClusters(self):
     
@@ -142,6 +147,9 @@ class Language:
         self.wordsInClusDict[origClass].remove(wordToBeShifted)
         self.wordsInClusDict[newClass].append(wordToBeShifted)
         
+        if self.morph != None:
+            self.morph.updateMorphData(wordToBeShifted, origClass, newClass)
+        
     def calcTentativePerplex(self, wordToBeShifted, origClass, tempNewClass):
         
         deltaPerplex = 0.0
@@ -182,8 +190,6 @@ class Language:
                 else:
                     newBiCount[(c, tempNewClass)] = self.bigramDict[(w, wordToBeShifted)]
         
-        #print newBiCount, self.sizeLang, self.clusUniCount[origClass], self.clusUniCount[tempNewClass], self.wordDict[wordToBeShifted]
-        
         # Adding the effects of new unigram cluster counts in the perplexity
         newOrigClassUniCount = self.clusUniCount[origClass] - self.wordDict[wordToBeShifted]
         newTempClassUniCount = self.clusUniCount[tempNewClass] + self.wordDict[wordToBeShifted]
@@ -198,7 +204,10 @@ class Language:
                      deltaPerplex += nlogn(self.clusBiCount[(c1, c2)]/self.sizeLang)
                  # adding the effect of new cluster bigram counts
                  deltaPerplex -= nlogn(val/self.sizeLang)
+        
+        if self.morph != None:
+            deltaMorph = self.morph.getChangeInMorph(wordToBeShifted, origClass, tempNewClass)         
+        else:
+            deltaMorph = 0.0
                  
-                 
-        del newBiCount
-        return deltaPerplex
+        return deltaPerplex + deltaMorph

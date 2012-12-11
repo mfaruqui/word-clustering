@@ -126,12 +126,12 @@ def calcPerplexity(uniCount, biCount, wordsInClusDict):
         if n != 0:
             sum2 += nlogn( n/sizeLang )
             
-        morphFactor += (1.0/len(uniCount))*morph.getClusMorphFactor(c)
+        #morphFactor += (1.0/len(uniCount))*morph.getClusMorphFactor(c)
     
     perplex = 2 * sum2 - sum1
-    print perplex, morphFactor
+    #print perplex, morphFactor
     
-    perplex -= morphPower*morphFactor
+    #perplex -= morphPower*morphFactor
     return perplex
 
 # Return the nlogn value if its already computed and stored in logValues
@@ -198,8 +198,9 @@ clusBiCount, wordToClusDict, wordsInClusDict, wordDict, bigramDict, nextWordDict
                 # adding the effect of new cluster bigram counts
                 newPerplex -= nlogn(val/sizeLang)
        
-       deltaMorph = morphPower*(1.0/len(clusUniCount))*morph.getChangeInMorph(wordToBeShifted, origClass, tempNewClass)
-       
+       #deltaMorph = morphPower*(1.0/len(clusUniCount))*morph.getChangeInMorph(wordToBeShifted, origClass, tempNewClass)
+       deltaMorph = 0.0
+        
        return newPerplex + deltaMorph
         
 def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
@@ -226,7 +227,7 @@ def updateClassDistrib(wordToBeShifted, origClass, tempNewClass, clusUniCount,\
        wordsInClusDict[origClass].remove(wordToBeShifted)
        wordsInClusDict[tempNewClass].append(wordToBeShifted)
        
-       morph.updateMorphData(wordToBeShifted, origClass, tempNewClass)
+       #morph.updateMorphData(wordToBeShifted, origClass, tempNewClass)
                       
        return
 
@@ -297,14 +298,14 @@ def main(inputFileName, outputFileName, numClusInit, typeClusInit):
     # Read the input file and get word counts
     wordDict, bigramDict, nextWordDict, prevWordDict = readInputFile(inputFileName)
 
-    sizeLang = 1.0*sum(val for word, val in wordDict.iteritems())
+    sizeLang = 1.0#*sum(val for word, val in wordDict.iteritems())
     numWords = 1.0*len(wordDict)
     
     # Initialise the cluster distribution
     wordToClusDict, wordsInClusDict = formInitialClusters(numClusInit, wordDict, typeClusInit)
     
     #transMat, priorMat = morph.makeTransitionProbMatrix(wordDict, wordsInClusDict)
-    morph.makeTransitionProbMatrix(wordDict, wordsInClusDict)
+    #morph.makeTransitionProbMatrix(wordDict, wordsInClusDict)
     
     # Get counts of the initial cluster configuration
     clusUniCount, clusBiCount = getClusterCounts(wordToClusDict, wordsInClusDict, wordDict, bigramDict)

@@ -35,15 +35,21 @@ def printClusters(outputFileName, en, fr, enFr):
         for (word, val) in sorted(sortedFrDict.items(), key = itemgetter(1), reverse = True):
             sortedFrList.append(word)
         
-        outFileEn.write(str(clus1)+' ||| ')       
         for word in sortedEnList:
-            outFileEn.write(word+' ')
-        outFileEn.write('\n')
-        
-        outFileFr.write(str(clus2)+' ||| ')       
+            outFileEn.write(word+'\t'+str(clus1)+'\n')
+            
         for word in sortedFrList:
-            outFileFr.write(word+' ')
-        outFileFr.write('\n')
+            outFileFr.write(word+'\t'+str(clus2)+'\n')
+            
+        #outFileEn.write(str(clus1)+' ||| ')       
+        #for word in sortedEnList:
+        #    outFileEn.write(word+' ')
+        #outFileEn.write('\n')
+        
+        #outFileFr.write(str(clus2)+' ||| ')       
+        #for word in sortedFrList:
+        #    outFileFr.write(word+' ')
+        #outFileFr.write('\n')
         
     outFileEn.close()
     outFileFr.close()
@@ -101,7 +107,6 @@ def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileNam
         for line in open(mono1FileName, 'r'):
             line = line.strip()
             for word in line.split():
-                #word = "e|||"+word
                 enWordDict[word] += 1.0
                 if prevWord != '':
                     enBigramDict[(prevWord, word)] += 1.0
@@ -114,7 +119,6 @@ def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileNam
         for line in open(mono2FileName, 'r'):
             line = line.strip()
             for word in line.split():
-                #word = "f|||"+word
                 frWordDict[word] += 1.0
                 if prevWord != '':
                     frBigramDict[(prevWord, word)] += 1.0
@@ -122,9 +126,4 @@ def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileNam
                 
         sys.stderr.write(' Complete!\n')
 
-    # Filtering out alignment pairs by their counts
-    #threshCount = 3
-    #alignDictEnFr = {key:value for (key, value) in alignDictEnFr.iteritems() if value >= threshCount}
-    #alignDictFrEn = {key:value for (key, value) in alignDictFrEn.iteritems() if value >= threshCount}
-           
     return alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict

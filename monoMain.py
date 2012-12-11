@@ -1,13 +1,12 @@
-# Type python ochClustering.py -h for information on how to use
 import sys
 from operator import itemgetter
 from math import log
 import argparse
 from collections import Counter
+from morph import Morphology
 
 from language import Language
 from perplexity import calcPerplexity
-#from collections import defaultdict
 
 def nlogn(x):
     if x == 0:
@@ -17,8 +16,8 @@ def nlogn(x):
 
 def readInputFile(inputFileName):
     
-    wordDict = {}#Counter()
-    bigramDict = {}#Counter()
+    wordDict = {}
+    bigramDict = {}
     
     sys.stderr.write('\nReading input file...')
     
@@ -44,9 +43,7 @@ def readInputFile(inputFileName):
      
     sys.stderr.write('  Complete!\n')
     return wordDict, bigramDict
-       
-# Implementation of Och 1999 clustering using the     
-# algorithm of Martin, Liermann, Ney 1998    
+  
 def runOchClustering(lang):
  
     wordsExchanged = 9999
@@ -99,18 +96,27 @@ def printNewClusters(outputFileName, lang):
     outFile = open(outputFileName, 'w')
      
     for clus, wordList in lang.wordsInClusDict.iteritems():
-        outFile.write(str(clus)+' ||| ')       
+        
+        wDict = {}
         for word in wordList:
-            outFile.write(word+' ')
-        outFile.write('\n')
+            wDict[word] = lang.wordDict[word]
+            
+        for word, val in sorted(wDict.items(), key=itemgetter(1), reverse=True):
+            outFile.write(word+'\t'+str(clus)+'\n')
+        
+    #    outFile.write(str(clus)+' ||| ')       
+    #    for word in wordList:
+    #        outFile.write(word+' ')
+    #    outFile.write('\n')
     
-def main(inputFileName, outputFileName, numClusInit, typeClusInit):
+def main(inputFileName, outputFileName, numClusInit, typeClusInit, morphWeight):
     
     # Read the input file and get word counts
     wordDict, bigramDict = readInputFile(inputFileName)
     
     lang = Language(wordDict, bigramDict, numClusInit, typeClusInit)
-    # Initialise the cluster distribution
+    morph = Morphology(lang, morphWeight)
+    lang.setMorphologyObject(morph)
     
     runOchClustering(lang)
     
@@ -124,6 +130,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--numclus", type=int, help="No. of clusters to be formed")
     parser.add_argument("-o", "--outputfile", type=str, help="Output file with word clusters")
     parser.add_argument("-t", "--type", type=int, choices=[0, 1], default=1, help="type of cluster initialization")
+    parser.add_argument("-m", "--morphweight", type=float, default=0, help="weight given to morphology factor")
                         
     args = parser.parse_args()
     
@@ -131,5 +138,6 @@ if __name__ == "__main__":
     numClusInit = args.numclus
     outputFileName = args.outputfile
     typeClusInit = args.type
+    morphWeight = args.morphweight
     
-    main(inputFileName, outputFileName, numClusInit, typeClusInit)
+    main(inputFileName, outputFileName, numClusInit, typeClusInit, morphWeight)
