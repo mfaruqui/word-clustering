@@ -5,180 +5,189 @@ from collections import Counter
 from operator import itemgetter
 import sys
 
-charSet = {}
-biCharSet = {}
-
-# Treat all the number as one character
-
-def makeTransitionProbMatrix(wordDict, wordsInClusDict):
+class Morphology:
     
-    global transMat, priorMat
+    def __init__(self, lang, morphWeight):
     
-    index = 0
-    for word in wordDict.iterkeys():
-        for ch in word:
-            if ch not in charSet:
-                charSet[ch] = index
-                index += 1
+        self.transMat = None
+        self.priorMat = None
+    
+        self.charSet = {}
+        self.biCharSet = {}
+        self.uniToBi = {}
+        
+        self.lang = lang
+        self.weight = morphWeight
+        self.suffixLen = 4
+
+        self.makeTransitionProbMatrix()
+        
+        return
+    
+    def makeTransitionProbMatrix(self):
+    
+        self.charSet = {'<w>':0, '</w>':1}
+        index1 = 2
+        index2 = 0
+        for word in self.lang.wordDict.iterkeys():
+            
+            if len(word) <=  self.suffixLen:
+                continue
+            else:
+                word = word[len(word)- self.suffixLen:]
                 
-    numChar = len(charSet)
-    numClus = len(wordsInClusDict)
-    transMat = np.ones((numClus, numChar**2 + 2*numChar))
-    priorMat = np.ones((numClus, numChar+2))
-    
-    index = 0
-    for ch1 in charSet.iterkeys():
-        for ch2 in charSet.iterkeys():
-            if ch2 != ch1:
-                biCharSet[(ch1, ch2)] = index
-                index += 1
-        
-        biCharSet[(ch1, ch1)] = index
-        index += 1
-        
-        biCharSet[('<w>', ch1)] = index
-        index += 1
-        biCharSet[(ch1, '</w>')] = index
-        index += 1
-        
-    lenOrigCharSet = len(charSet)
-    charSet['<w>'] = lenOrigCharSet
-    charSet['</w>'] = lenOrigCharSet+1
-            
-    for clus, wordList in wordsInClusDict.iteritems():
-        for word in wordList:
-            
-            transMat[clus][biCharSet[('<w>', word[0])]] += 1.0
-            priorMat[clus][charSet['<w>']] += 1.0
-            
-            for i, ch in enumerate(word):
-                transMat[clus][biCharSet[(word[i-1], ch)]] += 1.0
-                priorMat[clus][charSet[ch]] += 1.0
+            prevCh = '<w>'
+            for ch in word:
+                if ch not in self.charSet:
+                    self.charSet[ch] = index1
+                    index1 += 1
                     
-            transMat[clus][biCharSet[(ch, '</w>')]] += 1.0
-            priorMat[clus][charSet['</w>']] += 1.0
+                if prevCh not in self.uniToBi:
+                    self.uniToBi[prevCh] = []
+                    
+                if (prevCh, ch) not in self.biCharSet:
+                    self.biCharSet[(prevCh, ch)] = index2
+                    index2 += 1
+                    
+                    self.uniToBi[prevCh].append(ch)
+                    
+                prevCh = ch
+                
+            if (ch, '</w>') not in self.biCharSet:
+                self.biCharSet[(ch, '</w>')] = index2
+                index2 += 1
             
-    return
-    
-def getClusMorphFactor(clus):
-    
-    fact = 0.0
-    for (ch1, ch2), index in biCharSet.iteritems():
-        p = transMat[clus][index]/priorMat[clus][charSet[ch1]]
-        #try:
-        fact += p*log(p)
-        #except:
-        #    print transMat[clus][index], priorMat[clus][charSet[ch1]], ch1, ch2
-        #    sys.exit()
+            if ch not in self.uniToBi:
+                self.uniToBi[ch] = ['</w>']
+            elif '</w>' not in self.uniToBi[ch]:
+                self.uniToBi[ch].append('</w>')
         
-    return fact
-    
-def getChangeInMorph(wordToBeShifted, origClass, tempNewClass):
-    
-    deltaMorph = 0.0
-    uniqBiGrams = Counter()
-    uniqUniGrams = Counter()
-    
-    w = wordToBeShifted
-    
-    for i, ch2 in enumerate(w[1:]):
-    
-        i = i+1
-        ch1 = w[i-1]
-    
-        pOldOrig = transMat[origClass][biCharSet[(ch1, ch2)]]/priorMat[origClass][charSet[ch1]]
-        pNewOrig = (transMat[origClass][biCharSet[(ch1, ch2)]]-1)/(priorMat[origClass][charSet[ch1]]-1)
-        #Changes to the new cluster
-        pOldNew = transMat[tempNewClass][biCharSet[(ch1, ch2)]]/priorMat[tempNewClass][charSet[ch1]]
-        pNewNew = (transMat[tempNewClass][biCharSet[(ch1, ch2)]]+1)/(priorMat[tempNewClass][charSet[ch1]]+1)
-        #Removing old effects of both clusters
-        deltaMorph += pOldOrig*log(pOldOrig)
-        deltaMorph += pOldNew*log(pOldNew)
-        #Adding new effects of both clusters
-        deltaMorph -= pOldNew*log(pOldNew)
-        deltaMorph -= pNewNew*log(pNewNew)
+        assert len(self.biCharSet) == index2
+        assert len(self.charSet) == index1
+        assert len(self.biCharSet) == sum(len(self.uniToBi[ch]) for ch in self.uniToBi.keys())
+                
+        numChar = len(self.charSet)
+        numBiChar = len(self.biCharSet)
+        numClus = len(self.lang.wordsInClusDict)
         
-    return deltaMorph
+        self.transMat = np.ones((numClus, numBiChar))
+        self.priorMat = np.ones((numClus, numChar))
     
-    for i, ch in enumerate(wordToBeShifted):
-        if i > 0:
-            if (wordToBeShifted[i-1], ch) not in uniqBiGrams:
-                uniqBiGrams[(wordToBeShifted[i-1], ch)] += 1
-        if ch not in uniqUniGrams:
-            uniqUniGrams[ch] += 1
+        for clus, wordList in self.lang.wordsInClusDict.iteritems():
+            for word in wordList:
+                
+                if len(word) <=  self.suffixLen:
+                    continue
+                else:
+                    word = word[len(word)- self.suffixLen:]
             
-    uniqUniGrams['<w>'] += 1
-    uniqUniGrams['</w>'] += 1        
-    uniqBiGrams[('<w>', wordToBeShifted[0])] = 1
-    uniqBiGrams[(wordToBeShifted[len(wordToBeShifted)-1], '</w>')] = 1
+                self.transMat[clus][self.biCharSet[('<w>', word[0])]] += 1.0
+                self.priorMat[clus][self.charSet['<w>']] += 1.0
+            
+                for i, ch in enumerate(word):
+                    if i != 0:
+                        self.transMat[clus][self.biCharSet[(word[i-1], ch)]] += 1.0
+                    self.priorMat[clus][self.charSet[ch]] += 1.0
+                    
+                self.transMat[clus][self.biCharSet[(ch, '</w>')]] += 1.0
+                self.priorMat[clus][self.charSet['</w>']] += 1.0
+            
+        return
     
-    #for (ch1, ch2) in uniqBiGrams.iterkeys():
+    def getClusMorphFactor(self, clus):
     
-    #    pOldOrig = transMat[origClass][biCharSet[(ch1, ch2)]]/priorMat[origClass][charSet[ch1]]
-    #    pNewOrig = (transMat[origClass][biCharSet[(ch1, ch2)]]-uniqBiGrams[(ch1, ch2)])/(priorMat[origClass][charSet[ch1]]-uniqUniGrams[ch1])
-    #    #Changes to the new cluster
-    #    pOldNew = transMat[tempNewClass][biCharSet[(ch1, ch2)]]/priorMat[tempNewClass][charSet[ch1]]
-    #    pNewNew = (transMat[tempNewClass][biCharSet[(ch1, ch2)]]+uniqBiGrams[(ch1, ch2)])/(priorMat[tempNewClass][charSet[ch1]]+uniqUniGrams[ch1])
-    #    #Removing old effects of both clusters
-    #    deltaMorph += pOldOrig*log(pOldOrig)
-    #    deltaMorph += pOldNew*log(pOldNew)
-    #    #Adding new effects of both clusters
-    #    deltaMorph -= pOldNew*log(pOldNew)
-    #    deltaMorph -= pNewNew*log(pNewNew)
+        fact = 0.0
+    
+        for (ch1, ch2), index in self.biCharSet.iteritems():
+            p = self.transMat[clus][index]/self.priorMat[clus][self.charSet[ch1]]
+            fact += p*log(p)
         
-    #return deltaMorph
+        return self.weight*fact/self.lang.numClusters
     
-    for (ch1, ch2) in biCharSet.iterkeys():
+    def getChangeInMorph(self, wordToBeShifted, origClass, tempNewClass):
         
-        if ch1 in uniqUniGrams and (ch1, ch2) in uniqBiGrams:
-            #Changes to the old cluster
-            pOldOrig = transMat[origClass][biCharSet[(ch1, ch2)]]/priorMat[origClass][charSet[ch1]]
-            pNewOrig = (transMat[origClass][biCharSet[(ch1, ch2)]]-uniqBiGrams[(ch1, ch2)])/(priorMat[origClass][charSet[ch1]]-uniqUniGrams[ch1])
-            #Changes to the new cluster
-            pOldNew = transMat[tempNewClass][biCharSet[(ch1, ch2)]]/priorMat[tempNewClass][charSet[ch1]]
-            pNewNew = (transMat[tempNewClass][biCharSet[(ch1, ch2)]]+uniqBiGrams[(ch1, ch2)])/(priorMat[tempNewClass][charSet[ch1]]+uniqUniGrams[ch1])
-            #Removing old effects of both clusters
-            deltaMorph += pOldOrig*log(pOldOrig)
-            deltaMorph += pOldNew*log(pOldNew)
-            #Adding new effects of both clusters
-            deltaMorph -= pOldNew*log(pOldNew)
-            deltaMorph -= pNewNew*log(pNewNew)
+        if self.weight == 0:
+            return 0.0
+        
+        deltaMorph = 0.0
+        uniqBiGrams = Counter()
+        uniqUniGrams = Counter()
+    
+        if len(wordToBeShifted) <= self.suffixLen:
+            return 0.0
+        else:
+            wordToBeShifted = wordToBeShifted[len(wordToBeShifted)- self.suffixLen:]
+    
+        for i, ch in enumerate(wordToBeShifted):
+            if i > 0:
+                if (wordToBeShifted[i-1], ch) not in uniqBiGrams:
+                    uniqBiGrams[(wordToBeShifted[i-1], ch)] += 1
+                if ch not in uniqUniGrams:
+                    uniqUniGrams[ch] += 1
             
-        elif ch1 in uniqUniGrams:
-            #Changes to the old cluster
-            pOldOrig = transMat[origClass][biCharSet[(ch1, ch2)]]/priorMat[origClass][charSet[ch1]]
-            pNewOrig = transMat[origClass][biCharSet[(ch1, ch2)]]/(priorMat[origClass][charSet[ch1]]-uniqUniGrams[ch1])
-            #Changes to the new cluster
-            pOldNew = transMat[tempNewClass][biCharSet[(ch1, ch2)]]/priorMat[tempNewClass][charSet[ch1]]
-            pNewNew = transMat[tempNewClass][biCharSet[(ch1, ch2)]]/(priorMat[tempNewClass][charSet[ch1]]+uniqUniGrams[ch1])
-            #Removing old effects of both clusters
-            deltaMorph += pOldOrig*log(pOldOrig)
-            deltaMorph += pOldNew*log(pOldNew)
-            #Adding new effects of both clusters
-            deltaMorph -= pOldNew*log(pOldNew)
-            deltaMorph -= pNewNew*log(pNewNew)
-       
-    return deltaMorph
+        uniqUniGrams['<w>'] = 1
+        uniqUniGrams['</w>'] = 1        
+        uniqBiGrams[('<w>', wordToBeShifted[0])] = 1
+        uniqBiGrams[(wordToBeShifted[len(wordToBeShifted)-1], '</w>')] = 1
+        
+        for ch1 in uniqUniGrams.iterkeys():
+            if ch1 in self.uniToBi:
+                for ch2 in self.uniToBi[ch1]:
+                    if (ch1, ch2) in uniqBiGrams:
+                        #Changes to the old cluster
+                        pOldOrig = self.transMat[origClass][self.biCharSet[(ch1, ch2)]]/self.priorMat[origClass][self.charSet[ch1]]
+                        pNewOrig = (self.transMat[origClass][self.biCharSet[(ch1, ch2)]]-uniqBiGrams[(ch1, ch2)])/(self.priorMat[origClass][self.charSet[ch1]]-uniqUniGrams[ch1])
+                        #Changes to the new cluster
+                        pOldNew = self.transMat[tempNewClass][self.biCharSet[(ch1, ch2)]]/self.priorMat[tempNewClass][self.charSet[ch1]]
+                        pNewNew = (self.transMat[tempNewClass][self.biCharSet[(ch1, ch2)]]+uniqBiGrams[(ch1, ch2)])/(self.priorMat[tempNewClass][self.charSet[ch1]]+uniqUniGrams[ch1])
+                        #Removing old effects of both clusters
+                        deltaMorph += pOldOrig*log(pOldOrig)
+                        deltaMorph += pOldNew*log(pOldNew)
+                        #Adding new effects of both clusters
+                        deltaMorph -= pOldNew*log(pOldNew)
+                        deltaMorph -= pNewNew*log(pNewNew)
+                    else:
+                        #Changes to the old cluster
+                        pOldOrig = self.transMat[origClass][self.biCharSet[(ch1, ch2)]]/self.priorMat[origClass][self.charSet[ch1]]
+                        pNewOrig = self.transMat[origClass][self.biCharSet[(ch1, ch2)]]/(self.priorMat[origClass][self.charSet[ch1]]-uniqUniGrams[ch1])
+                        #Changes to the new cluster
+                        pOldNew = self.transMat[tempNewClass][self.biCharSet[(ch1, ch2)]]/self.priorMat[tempNewClass][self.charSet[ch1]]
+                        pNewNew = self.transMat[tempNewClass][self.biCharSet[(ch1, ch2)]]/(self.priorMat[tempNewClass][self.charSet[ch1]]+uniqUniGrams[ch1])
+                        #Removing old effects of both clusters
+                        deltaMorph += pOldOrig*log(pOldOrig)
+                        deltaMorph += pOldNew*log(pOldNew)
+                        #Adding new effects of both clusters
+                        deltaMorph -= pOldNew*log(pOldNew)
+                        deltaMorph -= pNewNew*log(pNewNew)
+                        
+        return self.weight*deltaMorph/self.lang.numClusters
     
-def updateMorphData(wordToBeShifted, origClass, tempNewClass):
+    def updateMorphData(self, wordToBeShifted, origClass, tempNewClass):
+        
+        if self.weight == 0:
+            return
+        
+        if len(wordToBeShifted) <= self.suffixLen:
+            return
+        else:
+            wordToBeShifted = wordToBeShifted[len(wordToBeShifted)- self.suffixLen:]
     
-    for i, ch in enumerate(wordToBeShifted):
-        if i > 0:
-            transMat[origClass][biCharSet[(wordToBeShifted[i-1], ch)]] -= 1
-            transMat[tempNewClass][biCharSet[(wordToBeShifted[i-1], ch)]] += 1
+        for i, ch in enumerate(wordToBeShifted):
+            if i > 0:
+                self.transMat[origClass][self.biCharSet[(wordToBeShifted[i-1], ch)]] -= 1
+                self.transMat[tempNewClass][self.biCharSet[(wordToBeShifted[i-1], ch)]] += 1
             
-        if priorMat[origClass][charSet[ch]] > 1:
-            priorMat[origClass][charSet[ch]] -= 1
-        priorMat[tempNewClass][charSet[ch]] += 1
+            self.priorMat[origClass][self.charSet[ch]] -= 1
+            self.priorMat[tempNewClass][self.charSet[ch]] += 1
     
-    priorMat[origClass][charSet['<w>']] -= 1
-    priorMat[origClass][charSet['</w>']] -= 1
-    priorMat[tempNewClass][charSet['<w>']] += 1
-    priorMat[tempNewClass][charSet['</w>']] += 1
+        self.priorMat[origClass][self.charSet['<w>']] -= 1
+        self.priorMat[origClass][self.charSet['</w>']] -= 1
+        self.priorMat[tempNewClass][self.charSet['<w>']] += 1
+        self.priorMat[tempNewClass][self.charSet['</w>']] += 1
             
-    transMat[origClass][biCharSet[('<w>', wordToBeShifted[0])]] -= 1
-    transMat[origClass][biCharSet[(wordToBeShifted[len(wordToBeShifted)-1], '</w>')]] -= 1
-    transMat[tempNewClass][biCharSet[('<w>', wordToBeShifted[0])]] += 1
-    transMat[tempNewClass][biCharSet[(wordToBeShifted[len(wordToBeShifted)-1], '</w>')]] += 1
+        self.transMat[origClass][self.biCharSet[('<w>', wordToBeShifted[0])]] -= 1
+        self.transMat[origClass][self.biCharSet[(wordToBeShifted[len(wordToBeShifted)-1], '</w>')]] -= 1
+        self.transMat[tempNewClass][self.biCharSet[('<w>', wordToBeShifted[0])]] += 1
+        self.transMat[tempNewClass][self.biCharSet[(wordToBeShifted[len(wordToBeShifted)-1], '</w>')]] += 1
     
-    return
+        return
