@@ -2,12 +2,11 @@ from language import nlogn
 from math import log
 import sys
 
-def calcPerplexity(en, fr, enFr, frEn, power):
+def calcPerplexity(en, fr, enFr, frEn, monoPower, biPower):
     
     sum1 = 0.0
     sum2 = 0.0
     morphFactor = 0.0
-    
     
     if en != None:
         for (c1, c2), nC1C2 in en.clusBiCount.iteritems():
@@ -31,7 +30,7 @@ def calcPerplexity(en, fr, enFr, frEn, power):
                 if fr.morph != None and fr.morph.weight != 0:
                     morphFactor += fr.morph.getClusMorphFactor(c)
                 
-    monoPerplex = 2 * sum2 - sum1
+    monoPerplex = monoPower*(2 * sum2 - sum1)
     biPerplex = 0.0
     
     if enFr != None:
@@ -39,8 +38,9 @@ def calcPerplexity(en, fr, enFr, frEn, power):
             pxy = sumCountPair/enFr.common.sumAllAlignLinks
             px = enFr.edgeSumInClus[c_en]/enFr.common.sumAllAlignLinks
             py = frEn.edgeSumInClus[c_fr]/frEn.common.sumAllAlignLinks
-            biPerplex += pxy*log(pxy/px) + pxy*log(pxy/py)
+            if pxy != 0:
+                biPerplex += pxy*log(pxy/px) + pxy*log(pxy/py)
         
-    sys.stderr.write("mono: "+str(monoPerplex)+"morph: "+str(morphFactor)+"bi: "+str(-power*biPerplex))
+    sys.stderr.write("mono: "+str(monoPerplex)+"morph: "+str(morphFactor)+"bi: "+str(-biPower*biPerplex))
         
-    return monoPerplex-morphFactor, -power*biPerplex
+    return monoPerplex-morphFactor, -biPower*biPerplex

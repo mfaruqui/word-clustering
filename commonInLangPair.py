@@ -1,22 +1,27 @@
 import sys
 from collections import Counter
+from operator import itemgetter
 
 class CommonInLangPair:
     
     def __init__(self, alignDict, lang1, lang2):
         
         self.sumAllAlignLinks = 0.0
-        self.alignDict = {}#Counter()
+        self.alignDict = {}
         self.alignedWordsInClusPairDict = {}
         self.sumAlignedWordsInClusPairDict = Counter()
         
         self.first = lang1
         self.second = lang2
     
-        for key, val in alignDict.iteritems():
-            self.alignDict[key] = val
-            self.sumAllAlignLinks += 1.0*val
+        for (w_en, w_fr), val in alignDict.iteritems():
             
+            if w_en in self.first.considerForBi and w_fr in self.second.considerForBi:
+                self.alignDict[(w_en, w_fr)] = val
+                self.sumAllAlignLinks += 1.0*val
+        
+        #print len(alignDict), len(set([w_en for (w_en, w_fr), val in alignDict.iteritems()])),\
+        #len(set([w_fr for (w_en, w_fr), val in alignDict.iteritems()]))
         self.initializeAlignedWordPairsSum()
         
         return 
@@ -33,5 +38,15 @@ class CommonInLangPair:
                 self.alignedWordsInClusPairDict[(c_en, c_fr)] = [(w_en, w_fr)]
             
             self.sumAlignedWordsInClusPairDict[(c_en, c_fr)] += self.alignDict[(w_en, w_fr)]
+            
+        return
+        
+    def printSumMatrix(self):
+        
+        print ''
+        
+        for (c_en, c_fr), val in self.sumAlignedWordsInClusPairDict.iteritems():
+            if val != 0:
+                print c_en, c_fr, val
             
         return

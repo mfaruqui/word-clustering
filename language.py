@@ -1,5 +1,7 @@
 from math import log
 from operator import itemgetter
+import string
+USE_ALL_WORDS = -1
 
 def nlogn(x):
     if x == 0:
@@ -9,10 +11,11 @@ def nlogn(x):
 
 class Language:
     
-    def __init__(self, wDict, bigramDict, numClusInit, typeClusInit):
+    def __init__(self, wDict, bigramDict, numClusInit, typeClusInit, freqCutoff, stopWordFile):
         
-        self.sizeLang = 0
-        self.vocabLen = 0
+        self.sizeLang = 0.0
+        self.vocabLen = 0.0
+        self.freqCutoff = freqCutoff#USE_ALL_WORDS
         
         self.wordDict = {}
         self.bigramDict = {}
@@ -23,6 +26,11 @@ class Language:
         self.clusUniCount = {}
         self.clusBiCount = {}
         self.morph = None
+        
+        self.stopWordFile = stopWordFile
+        self.stopWords = []
+        self.considerForBi = []
+        
     
         self.numClusters = numClusInit
         self.typeClusInit = typeClusInit
@@ -34,15 +42,44 @@ class Language:
         for (w1, w2), val in bigramDict.iteritems():
             self.bigramDict[(w1, w2)] = bigramDict[(w1, w2)]
             
-        self.vocabLen = len(self.wordDict)
-            
+        self.vocabLen = 1.0*len(self.wordDict)
+        
+        self.readStopWordList()
+        self.setWordsForBi()    
         self.formClusters()
         self.formPrevNextWordDict()
         self.initializeClusterCounts()
         
+    def readStopWordList(self):
+        
+        for line in open(self.stopWordFile,'r'):
+            line = line.strip()
+            self.stopWords.append(line)
+            
+        return
+        
+    def setWordsForBi(self):
+        
+        if self.freqCutoff != USE_ALL_WORDS:
+            #This makes bilingual factor only consider words below a particular frequnecy
+            #for (word, val) in sorted(self.wordDict.items(), key=itemgetter(1), reverse=True):
+            #    if val <= self.freqCutoff:
+            #        self.considerForBi.append(word)
+            
+            for word in self.wordDict.keys():
+                if word not in string.punctuation and word not in self.stopWords:
+                    self.considerForBi.append(word)
+            
+        else:
+            self.considerForBi = [word for word in self.wordDict.keys()]
+            
+        return
+        
     def setMorphologyObject(self, morphObj):
         
         self.morph = morphObj
+            
+        return
             
     def formClusters(self):
     

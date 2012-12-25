@@ -52,7 +52,7 @@ def runOchClustering(lang):
     
     origPerplex, wastePerplex = calcPerplexity(lang, None, None, None, 0)
     
-    while ((wordsExchanged > 0.001 * wordVocabLen or iterNum < 10) and iterNum <= 20):
+    while ((wordsExchanged > 0.001 * wordVocabLen or iterNum < 10) and wordsExchanged != 0 and iterNum <= 20):
         iterNum += 1
         wordsExchanged = 0
         wordsDone = 0

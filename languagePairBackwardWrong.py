@@ -181,15 +181,11 @@ class LanguagePairBackward:
         
             alignedClasses = self.clusAlignedClusDict[origClass]
             wordAlignedClasses = self.wordAlignedClusDict[wordToBeShifted]
-            
-            for alignedClass in alignedClasses:
+        
+            # Changing perplexity effects for classes which had wordToBeshifted aligned
+            for alignedClass in wordAlignedClasses:
                 
-                # The wordToBeShifted might or might not be connected to the alignedClass
-                if (wordToBeShifted, alignedClass) in self.wordToClusCount:
-                    sumCountShiftedWordAligned = self.wordToClusCount[(wordToBeShifted, alignedClass)]
-                else:
-                    sumCountShiftedWordAligned = 0.0
-                
+                sumCountShiftedWordAligned = self.wordToClusCount[(wordToBeShifted, alignedClass)]
                 sumCountPair = self.common.sumAlignedWordsInClusPairDict[(alignedClass, origClass)]
             
                 old_px = self.edgeSumInClus[origClass]/self.common.sumAllAlignLinks
@@ -204,18 +200,34 @@ class LanguagePairBackward:
                     
                 if new_pxy != 0:
                     deltaBi -= new_pxy*log(new_pxy/new_px) + new_pxy*log(new_pxy/new_py)
+                
+            for alignedClass in alignedClasses:
+            
+                if alignedClass not in wordAlignedClasses:
+                    
+                    sumCountPair = self.common.sumAlignedWordsInClusPairDict[(alignedClass, origClass)]
+                
+                    old_px = self.edgeSumInClus[origClass]/self.common.sumAllAlignLinks
+                    old_py = self.reverse.edgeSumInClus[alignedClass]/self.common.sumAllAlignLinks
+                    old_pxy = sumCountPair/self.common.sumAllAlignLinks
+            
+                    new_px = (self.edgeSumInClus[origClass] - self.wordEdgeCount[wordToBeShifted])/self.common.sumAllAlignLinks
+                    new_py = old_py
+                    new_pxy = old_pxy
+                
+                    deltaBi += old_pxy*log(old_pxy/old_px) #+ old_pxy*log(old_pxy/old_py)
+                    deltaBi -= new_pxy*log(new_pxy/new_px) #+ new_pxy*log(new_pxy/new_py)
                     
             # Adding effects due to moving to a new class
             alignedClasses = self.clusAlignedClusDict[tempNewClass]
         
             for alignedClass in alignedClasses:
             
+                sumCountPair = self.common.sumAlignedWordsInClusPairDict[(alignedClass, tempNewClass)]
                 if (wordToBeShifted, alignedClass) in self.wordToClusCount:
                     sumCountShiftedWordAligned = self.wordToClusCount[(wordToBeShifted, alignedClass)]
                 else:
                     sumCountShiftedWordAligned = 0.0
-                    
-                sumCountPair = self.common.sumAlignedWordsInClusPairDict[(alignedClass, tempNewClass)]
             
                 old_px = self.edgeSumInClus[tempNewClass]/self.common.sumAllAlignLinks
                 old_py = self.reverse.edgeSumInClus[alignedClass]/self.common.sumAllAlignLinks
@@ -223,23 +235,43 @@ class LanguagePairBackward:
             
                 deltaBi += old_pxy*log(old_pxy/old_px) + old_pxy*log(old_pxy/old_py)
             
-                new_px = (self.edgeSumInClus[tempNewClass] + self.wordEdgeCount[wordToBeShifted])/self.common.sumAllAlignLinks
-                new_py = old_py
-                new_pxy = (sumCountPair + sumCountShiftedWordAligned)/self.common.sumAllAlignLinks
+                if alignedClass not in wordAlignedClasses:
+                    
+                    new_px = (self.edgeSumInClus[tempNewClass] + self.wordEdgeCount[wordToBeShifted])/self.common.sumAllAlignLinks
+                    new_py = old_py
+                    new_pxy = old_pxy
+                      
+                    deltaBi -= new_pxy*log(new_pxy/new_px) + new_pxy*log(new_pxy/new_py)
+                    
+                if alignedClass in wordAlignedClasses:
+                    
+                    new_px = (self.edgeSumInClus[tempNewClass] + self.wordEdgeCount[wordToBeShifted])/self.common.sumAllAlignLinks
+                    new_py = old_py
+                    new_pxy = (sumCountPair + sumCountShiftedWordAligned)/self.common.sumAllAlignLinks
                 
-                deltaBi -= new_pxy*log(new_pxy/new_px) + new_pxy*log(new_pxy/new_py)
-            
-            # New classes will be aligned to tempNewClass now because of connections of wordToBeShifted          
+                    deltaBi -= new_pxy*log(new_pxy/new_px) + new_pxy*log(new_pxy/new_py)
+                
             for alignedClass in wordAlignedClasses:
            
+                sumCountShiftedWordAligned = self.wordToClusCount[(wordToBeShifted, alignedClass)]
+            
                 if alignedClass not in alignedClasses:
-                    
-                    sumCountShiftedWordAligned = self.wordToClusCount[(wordToBeShifted, alignedClass)]
                     
                     new_px = (self.edgeSumInClus[tempNewClass] + self.wordEdgeCount[wordToBeShifted])/self.common.sumAllAlignLinks
                     new_py = self.reverse.edgeSumInClus[alignedClass]/self.common.sumAllAlignLinks
                     new_pxy = sumCountShiftedWordAligned/self.common.sumAllAlignLinks
                     
+                    # You have already removed the old effect earlier, now, just add the new effect 
+                    deltaBi -= new_pxy*log(new_pxy/new_px) + new_pxy*log(new_pxy/new_py)
+                    
+                elif alignedClass in alignedClasses:
+                
+                    sumCountPair = self.common.sumAlignedWordsInClusPairDict[(alignedClass, tempNewClass)]
+                
+                    new_px = (self.edgeSumInClus[tempNewClass] + self.wordEdgeCount[wordToBeShifted])/self.common.sumAllAlignLinks
+                    new_py = self.reverse.edgeSumInClus[alignedClass]/self.common.sumAllAlignLinks
+                    new_pxy = (sumCountPair + sumCountShiftedWordAligned)/self.common.sumAllAlignLinks
+                
                     deltaBi -= new_pxy*log(new_pxy/new_px) + new_pxy*log(new_pxy/new_py)
                     
         return deltaBi
