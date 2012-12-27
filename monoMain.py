@@ -50,7 +50,8 @@ def runOchClustering(lang):
     iterNum = 0
     wordVocabLen = len(lang.wordDict)
     
-    origPerplex, wastePerplex = calcPerplexity(lang, None, None, None, 0)
+    #origPerplex, wastePerplex = calcPerplexity(lang, None, None, None, 0)
+    origPerplex = 0.0
     
     while ((wordsExchanged > 0.001 * wordVocabLen or iterNum < 10) and wordsExchanged != 0 and iterNum <= 20):
         iterNum += 1
@@ -59,8 +60,9 @@ def runOchClustering(lang):
     
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         
+        for (word, val) in sorted(lang.wordDict.items(), key=itemgetter(1), reverse=False):
         # Looping over all the words in the vocabulory
-        for word in sorted(lang.wordDict.keys()):
+        #for word in sorted(lang.wordDict.keys()):
             origClass = lang.wordToClusDict[word]
             currLeastPerplex = origPerplex
             tempNewClass = origClass
@@ -103,18 +105,13 @@ def printNewClusters(outputFileName, lang):
             
         for word, val in sorted(wDict.items(), key=itemgetter(1), reverse=True):
             outFile.write(word+'\t'+str(clus)+'\n')
-        
-    #    outFile.write(str(clus)+' ||| ')       
-    #    for word in wordList:
-    #        outFile.write(word+' ')
-    #    outFile.write('\n')
-    
+         
 def main(inputFileName, outputFileName, numClusInit, typeClusInit, morphWeight):
     
     # Read the input file and get word counts
     wordDict, bigramDict = readInputFile(inputFileName)
     
-    lang = Language(wordDict, bigramDict, numClusInit, typeClusInit)
+    lang = Language(wordDict, bigramDict, numClusInit, typeClusInit, -1, '/Users/mfaruqui/Desktop/projects/multil-word-cluster/de_stop.txt')
     morph = Morphology(lang, morphWeight)
     lang.setMorphologyObject(morph)
     

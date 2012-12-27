@@ -95,7 +95,8 @@ def runOchClustering(lang1, lang2, lang12, lang21, monoPower, biPower):
  
     wordsExchanged = 9999
     iterNum = 0
-    origMono, origBi = calcPerplexity(lang1, lang2, lang12, lang21, monoPower, biPower)
+    #origMono, origBi = calcPerplexity(lang1, lang2, lang12, lang21, monoPower, biPower)
+    origMono, origBi = (0.0, 0.0)
     
     while ( (wordsExchanged > 0.001 * (lang1.vocabLen + lang2.vocabLen) or iterNum < 5) and wordsExchanged !=0 and iterNum <= 20):
         iterNum += 1
@@ -152,18 +153,25 @@ def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileN
     #for val, freq in sorted(freqProfile.items(), key=itemgetter(0)):
     #    ratio += 1.0*freq/lang1.vocabLen
     #    print val, freq, ratio
-    lang12.common.printSumMatrix()
+    #lang12.common.printSumMatrix()
     
     #for word, val in sorted(lang1.wordDict.items(), key=itemgetter(1), reverse=True):
     #    print word, val
     
+    #for (word, val) in sorted(lang1.wordDict.items(), key=itemgetter(1), reverse=True):
+    #    if word in lang12.wordToWordAlignedDict:
+    #        print "["+word+"]",
+    #        for w_fr in lang12.wordToWordAlignedDict[word]:
+    #            print w_fr+":"+str(common.alignDict[(word,w_fr)]),
+    #        print ''
+                
+    
     # Run the clustering algorithm and get new clusters    
     runOchClustering(lang1, lang2, lang12, lang21, monoPower, biPower)
     
-    lang12.common.printSumMatrix()
+    #lang12.common.printSumMatrix()
     
-    origMono, origBi = calcPerplexity(lang1, lang2, lang12, lang21, monoPower, biPower)
-    
+    #origMono, origBi = calcPerplexity(lang1, lang2, lang12, lang21, monoPower, biPower)
     #sys.stderr.write(str(origMono)+' '+str(origBi)+'\n')
     
     # Print the clusters

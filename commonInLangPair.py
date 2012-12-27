@@ -11,17 +11,32 @@ class CommonInLangPair:
         self.alignedWordsInClusPairDict = {}
         self.sumAlignedWordsInClusPairDict = Counter()
         
+        tempL1 = Counter()
+        tempL2 = Counter()
+        
         self.first = lang1
         self.second = lang2
     
         for (w_en, w_fr), val in alignDict.iteritems():
             
-            if w_en in self.first.considerForBi and w_fr in self.second.considerForBi:
-                self.alignDict[(w_en, w_fr)] = val
-                self.sumAllAlignLinks += 1.0*val
+            #if w_en in self.first.considerForBi and w_fr in self.second.considerForBi:
+            self.alignDict[(w_en, w_fr)] = val
+            self.sumAllAlignLinks += 1.0*val
+            
+            tempL1[w_en] += 1.0*val
+            tempL2[w_fr] += 1.0*val
         
-        #print len(alignDict), len(set([w_en for (w_en, w_fr), val in alignDict.iteritems()])),\
-        #len(set([w_fr for (w_en, w_fr), val in alignDict.iteritems()]))
+        sys.stderr.write(str(len(alignDict))+'\n')
+            
+        for (w_en, w_fr), count in self.alignDict.iteritems():
+            importance = 2*count/(tempL1[w_en]+tempL2[w_fr])
+            if importance < 0.5:
+                del self.alignDict[(w_en, w_fr)]
+        
+        sys.stderr.write(str(len(alignDict))+'\n')
+        
+        del tempL1, tempL2
+            
         self.initializeAlignedWordPairsSum()
         
         return 
