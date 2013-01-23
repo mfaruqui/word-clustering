@@ -60,7 +60,7 @@ def runOchClustering(lang):
     
         sys.stderr.write('\n'+'IterNum: '+str(iterNum)+'\n'+'Perplexity: '+str(origPerplex)+'\n')
         
-        for (word, val) in sorted(lang.wordDict.items(), key=itemgetter(1), reverse=False):
+        for (word, val) in sorted(lang.wordDict.items(), key=itemgetter(1), reverse=True):
         # Looping over all the words in the vocabulory
         #for word in sorted(lang.wordDict.keys()):
             origClass = lang.wordToClusDict[word]
@@ -111,9 +111,9 @@ def main(inputFileName, outputFileName, numClusInit, typeClusInit, morphWeight):
     # Read the input file and get word counts
     wordDict, bigramDict = readInputFile(inputFileName)
     
-    lang = Language(wordDict, bigramDict, numClusInit, typeClusInit, -1, '/Users/mfaruqui/Desktop/projects/multil-word-cluster/de_stop.txt')
-    morph = Morphology(lang, morphWeight)
-    lang.setMorphologyObject(morph)
+    lang = Language(wordDict, bigramDict, numClusInit, typeClusInit)
+    #morph = Morphology(lang, morphWeight)
+    #lang.setMorphologyObject(morph)
     
     runOchClustering(lang)
     
