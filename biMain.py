@@ -24,7 +24,7 @@ def rearrangeClusters(origMono, origBi, lang, langPair, monoPower, biPower):
     currLeastMono = origMono
     currLeastBi = origBi
     
-    for (word, val) in sorted(lang.wordDict.items(), key=itemgetter(1), reverse=False):
+    for (word, val) in sorted(lang.wordDict.items(), key=itemgetter(1), reverse=True):
     #for word in sorted(lang.wordDict.keys()):
         
         origClass = lang.wordToClusDict[word]
@@ -122,11 +122,11 @@ def runOchClustering(lang1, lang2, lang12, lang21, monoPower, biPower):
         
     return
     
-def initializeLanguagePairObjets(alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict, numClusInit, typeClusInit, freqCutoff):
+def initializeLanguagePairObjets(alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict, numClusInit, typeClusInit, edgeThresh):
     
-    lang1 = Language(enWordDict, enBigramDict, numClusInit, typeClusInit, freqCutoff, "/Users/mfaruqui/Desktop/projects/multil-word-cluster/en_stop.txt")
-    lang2 = Language(frWordDict, frBigramDict, numClusInit, typeClusInit, freqCutoff, "/Users/mfaruqui/Desktop/projects/multil-word-cluster/de_stop.txt")
-    common = CommonInLangPair(alignDict, lang1, lang2)
+    lang1 = Language(enWordDict, enBigramDict, numClusInit, typeClusInit)
+    lang2 = Language(frWordDict, frBigramDict, numClusInit, typeClusInit)
+    common = CommonInLangPair(alignDict, lang1, lang2, edgeThresh)
     lang12 = LanguagePairForward(lang1, lang2, common)
     lang21 = LanguagePairBackward(lang2, lang1, common)
     lang12.assignReverseLanguagePair(lang21)
@@ -134,45 +134,19 @@ def initializeLanguagePairObjets(alignDict, enWordDict, enBigramDict, frWordDict
     
     return lang1, lang2, lang12, lang21, common
         
-def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileName, numClusInit, typeClusInit, fileLength, monoPower, biPower, freqCutoff):
+def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileName, numClusInit, typeClusInit, fileLength, monoPower, biPower, edgeThresh):
     
     # Read the input file and get word counts
     alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict \
     = readBilingualData(fileLength, inputFileName, alignFileName, mono1FileName, mono2FileName)
     
     lang1, lang2, lang12, lang21, common = initializeLanguagePairObjets(alignDict, enWordDict, \
-                                           enBigramDict, frWordDict, frBigramDict, numClusInit, typeClusInit, freqCutoff)
+                                           enBigramDict, frWordDict, frBigramDict, numClusInit, typeClusInit, edgeThresh)
                                            
     del alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict
     
-    #freqProfile = Counter()
-    #for word, val in lang1.wordDict.iteritems():
-    #    freqProfile[val] += 1
-    
-    #ratio = 0.0
-    #for val, freq in sorted(freqProfile.items(), key=itemgetter(0)):
-    #    ratio += 1.0*freq/lang1.vocabLen
-    #    print val, freq, ratio
-    #lang12.common.printSumMatrix()
-    
-    #for word, val in sorted(lang1.wordDict.items(), key=itemgetter(1), reverse=True):
-    #    print word, val
-    
-    #for (word, val) in sorted(lang1.wordDict.items(), key=itemgetter(1), reverse=True):
-    #    if word in lang12.wordToWordAlignedDict:
-    #        print "["+word+"]",
-    #        for w_fr in lang12.wordToWordAlignedDict[word]:
-    #            print w_fr+":"+str(common.alignDict[(word,w_fr)]),
-    #        print ''
-                
-    
     # Run the clustering algorithm and get new clusters    
     runOchClustering(lang1, lang2, lang12, lang21, monoPower, biPower)
-    
-    #lang12.common.printSumMatrix()
-    
-    #origMono, origBi = calcPerplexity(lang1, lang2, lang12, lang21, monoPower, biPower)
-    #sys.stderr.write(str(origMono)+' '+str(origBi)+'\n')
     
     # Print the clusters
     printClusters(outputFileName, lang1, lang2, lang12)
@@ -190,7 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--type", type=int, choices=[0, 1], default=1, help="type of cluster initialization")
     parser.add_argument("-p", "--bipower", type=float, default=1, help="co-efficient of the multilingual perplexity factor")
     parser.add_argument("-m", "--monopower", type=float, default=1, help="co-efficient of the monolingual perplexity factor")
-    parser.add_argument("-f", "--freqcutoff", type=int, default=-1, help="words of freq <= f will be considered for bi")
+    parser.add_argument("-e", "--edgethresh", type=float, default=0, help="thresh for edges to be considered for bi")
     
     args = parser.parse_args()
     
@@ -204,6 +178,6 @@ if __name__ == "__main__":
     biPower = args.bipower
     monoPower = args.monopower
     fileLength = args.filelength
-    freqCutoff = args.freqcutoff
+    edgeThresh = args.edgethresh
     
-    main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileName, numClusInit, typeClusInit, fileLength, monoPower, biPower, freqCutoff)
+    main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileName, numClusInit, typeClusInit, fileLength, monoPower, biPower, edgeThresh)
