@@ -4,19 +4,22 @@ from operator import itemgetter
 
 class CommonInLangPair:
     
-    def __init__(self, alignDict, lang1, lang2):
+    def __init__(self, alignDict, lang1, lang2, edgeThresh):
         
         self.sumAllAlignLinks = 0.0
+        self.edgeThresh = edgeThresh
         self.alignDict = {}
         self.alignedWordsInClusPairDict = {}
         self.sumAlignedWordsInClusPairDict = Counter()
         
-        tempL1 = Counter()
-        tempL2 = Counter()
-        
         self.first = lang1
         self.second = lang2
-    
+        
+        tempL1 = Counter()
+        tempL2 = Counter()
+        #enDict = {}
+        #frDict = {}
+        
         for (w_en, w_fr), val in alignDict.iteritems():
             
             #if w_en in self.first.considerForBi and w_fr in self.second.considerForBi:
@@ -25,20 +28,27 @@ class CommonInLangPair:
             
             tempL1[w_en] += 1.0*val
             tempL2[w_fr] += 1.0*val
-        
-        sys.stderr.write(str(len(alignDict))+'\n')
             
-        for (w_en, w_fr), count in self.alignDict.iteritems():
+        sys.stderr.write('\n'+str(len(self.alignDict))+'\n')
+        
+        for (w_en, w_fr), count in alignDict.iteritems():
             importance = 2*count/(tempL1[w_en]+tempL2[w_fr])
-            if importance < 0.5:
+        #    n11 = count
+        #    n00 = self.sumAllAlignLinks - count
+        #    n01 = tempL1[w_en] - count
+        #    n10 = tempL2[w_fr] - count
+        #    importance = (n11+n10+n01+n00)*(n11*n00-n01*n10)*(n11*n00-n01*n10)
+        #    importance /= (n11+n10)*(n11+n01)*(n10+n00)*(n00+n01)
+        #    toDelete[(w_en, w_fr)] = importance
+            if importance < self.edgeThresh:
+                self.sumAllAlignLinks -= self.alignDict[(w_en, w_fr)]
                 del self.alignDict[(w_en, w_fr)]
         
-        sys.stderr.write(str(len(alignDict))+'\n')
+        sys.stderr.write(str(len(self.alignDict))+'\n')
+        self.initializeAlignedWordPairsSum()
+        sys.stderr.write("\nFinished making the common lang pair object")
         
         del tempL1, tempL2
-            
-        self.initializeAlignedWordPairsSum()
-        
         return 
             
     def initializeAlignedWordPairsSum(self):
