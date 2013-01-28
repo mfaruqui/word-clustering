@@ -132,15 +132,22 @@ def initializeLanguagePairObjets(alignDict, enWordDict, enBigramDict, frWordDict
     lang12.assignReverseLanguagePair(lang21)
     lang21.assignReverseLanguagePair(lang12)
     
-    return lang1, lang2, lang12, lang21, common
+    return lang1, lang2, lang12, lang21
         
 def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileName, numClusInit, typeClusInit, fileLength, monoPower, biPower, edgeThresh):
     
+    
+    enWordDict = Counter()
+    enBigramDict = Counter()
+    frWordDict = Counter()
+    frBigramDict = Counter()
+    
     # Read the input file and get word counts
     alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict \
-    = readBilingualData(fileLength, inputFileName, alignFileName, mono1FileName, mono2FileName)
+    = readBilingualData(fileLength, inputFileName, alignFileName, mono1FileName, mono2FileName,\
+                        enWordDict, enBigramDict, frWordDict, frBigramDict)
     
-    lang1, lang2, lang12, lang21, common = initializeLanguagePairObjets(alignDict, enWordDict, \
+    lang1, lang2, lang12, lang21 = initializeLanguagePairObjets(alignDict, enWordDict, \
                                            enBigramDict, frWordDict, frBigramDict, numClusInit, typeClusInit, edgeThresh)
                                            
     del alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict
@@ -149,7 +156,7 @@ def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileN
     runOchClustering(lang1, lang2, lang12, lang21, monoPower, biPower)
     
     # Print the clusters
-    printClusters(outputFileName, lang1, lang2, lang12)
+    printClusters(outputFileName, lang1, lang2, None)
     
 if __name__ == "__main__":
 
