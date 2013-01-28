@@ -2,22 +2,28 @@ import sys
 from collections import Counter
 from operator import itemgetter
 
-def printClusters(outputFileName, en, fr, enFr):
+def printClusters(outputFileName, en, de, fr):
     
     outFileEn = open(outputFileName+'.en', 'w')
-    outFileFr = open(outputFileName+'.fr', 'w')
+    outFileDe = open(outputFileName+'.de', 'w')
+    if fr != None:
+        outFileFr = open(outputFileName+'.fr', 'w')
     
-    clusSimDict = {}
-    for ((clus1, wordListEn), (clus2, wordListFr)) in zip(en.wordsInClusDict.iteritems(), fr.wordsInClusDict.iteritems()):
-        if enFr.common.alignedWordsInClusPairDict.has_key((clus1, clus2)):
-            clusSimDict[(clus1, clus2)] = 1.0*len(enFr.common.alignedWordsInClusPairDict[(clus1, clus2)])/(len(wordListEn)*len(wordListFr))
-        else:
-            clusSimDict[(clus1, clus2)] = 0.0
+    #clusSimDict = {}
+    #for ((clus1, wordListEn), (clus2, wordListFr)) in zip(en.wordsInClusDict.iteritems(), fr.wordsInClusDict.iteritems()):
+    #    if enFr.common.alignedWordsInClusPairDict.has_key((clus1, clus2)):
+    #        clusSimDict[(clus1, clus2)] = 1.0*len(enFr.common.alignedWordsInClusPairDict[(clus1, clus2)])/(len(wordListEn)+len(wordListFr))
+    #    else:
+    #        clusSimDict[(clus1, clus2)] = 0.0
+    #    
+    #for (clus1, clus2), val in sorted(clusSimDict.items(), key=itemgetter(1), reverse=True):
+    
+    for clus in sorted(en.wordsInClusDict.keys()):
         
-    for (clus1, clus2), val in sorted(clusSimDict.items(), key=itemgetter(1), reverse=True):
-        
-        wordListEn = en.wordsInClusDict[clus1]
-        wordListFr = fr.wordsInClusDict[clus2]
+        wordListEn = en.wordsInClusDict[clus]
+        wordListDe = de.wordsInClusDict[clus]
+        if fr != None:
+            wordListFr = fr.wordsInClusDict[clus]
         
         sortedEnDict = {}
         for word in wordListEn:
@@ -27,40 +33,43 @@ def printClusters(outputFileName, en, fr, enFr):
         for (word, val) in sorted(sortedEnDict.items(), key = itemgetter(1), reverse = True):
             sortedEnList.append(word)
             
-        sortedFrDict = {}
-        for word in wordListFr:
-            sortedFrDict[word] = fr.wordDict[word]
+        sortedDeDict = {}
+        for word in wordListDe:
+            sortedDeDict[word] = de.wordDict[word]
         
-        sortedFrList = []    
-        for (word, val) in sorted(sortedFrDict.items(), key = itemgetter(1), reverse = True):
-            sortedFrList.append(word)
+        sortedDeList = []    
+        for (word, val) in sorted(sortedDeDict.items(), key = itemgetter(1), reverse = True):
+            sortedDeList.append(word)
+         
+        if fr != None:
+            sortedFrDict = {}
+            for word in wordListFr:
+                sortedFrDict[word] = fr.wordDict[word]
+        
+            sortedFrList = []    
+            for (word, val) in sorted(sortedFrDict.items(), key = itemgetter(1), reverse = True):
+                sortedFrList.append(word)
         
         for word in sortedEnList:
-            outFileEn.write(word+'\t'+str(clus1)+'\n')
+            outFileEn.write(word+'\t'+str(clus)+'\n')
             
-        for word in sortedFrList:
-            outFileFr.write(word+'\t'+str(clus2)+'\n')
+        for word in sortedDeList:
+            outFileDe.write(word+'\t'+str(clus)+'\n')
             
-        #outFileEn.write(str(clus1)+' ||| ')       
-        #for word in sortedEnList:
-        #    outFileEn.write(word+' ')
-        #outFileEn.write('\n')
-        
-        #outFileFr.write(str(clus2)+' ||| ')       
-        #for word in sortedFrList:
-        #    outFileFr.write(word+' ')
-        #outFileFr.write('\n')
-        
+        if fr != None:
+            for word in sortedFrList:
+                outFileFr.write(word+'\t'+str(clus)+'\n')
+                    
     outFileEn.close()
-    outFileFr.close()
+    outFileDe.close()
+    if fr != None:
+        outFileFr.close()
 
-def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileName, mono2FileName):
+def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileName, mono2FileName,\
+                     enWordDict, enBigramDict, frWordDict, frBigramDict):
     
-    enWordDict = Counter()
-    enBigramDict = Counter()
-    frWordDict = Counter()
-    frBigramDict = Counter()
     alignDict = Counter()
+    
     sys.stderr.write('\nReading parallel and alignment file...')
     
     lineNum = 0
