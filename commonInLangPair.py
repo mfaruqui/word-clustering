@@ -33,13 +33,6 @@ class CommonInLangPair:
         
         for (w_en, w_fr), count in alignDict.iteritems():
             importance = 2*count/(tempL1[w_en]+tempL2[w_fr])
-        #    n11 = count
-        #    n00 = self.sumAllAlignLinks - count
-        #    n01 = tempL1[w_en] - count
-        #    n10 = tempL2[w_fr] - count
-        #    importance = (n11+n10+n01+n00)*(n11*n00-n01*n10)*(n11*n00-n01*n10)
-        #    importance /= (n11+n10)*(n11+n01)*(n10+n00)*(n00+n01)
-        #    toDelete[(w_en, w_fr)] = importance
             if importance < self.edgeThresh:
                 self.sumAllAlignLinks -= self.alignDict[(w_en, w_fr)]
                 del self.alignDict[(w_en, w_fr)]

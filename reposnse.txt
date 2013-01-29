@@ -1,0 +1,25 @@
+ I was going through the reading material and found the concept of dividing a sequecne of two consecutive utterances into a "First part" (FP henceforth) and a "Second part" (SP henceforth) quite interesting. In general, an FP requires a particular kind of an SP in continuation.
+ 
+ For example:
+ 
+ FP: "Hello, how are you?"
+ SP: "Thanks, I am fine."
+ 
+ Later, on pages 307-308 the author talks about "Marked" and "Unmarked" structures. Marked structures are those that can be identified by some kind of special structural complexity like time delay in speech or an SP that is split into mutiple speech-segments. In contrast, unmarked structures have a simple structure.
+ 
+ In examples (24) and (25) the author explains that "Rejections" are marked whereas "Acceptances" are unmarked. I am unsure of whether this holds true in most of the cases as the author claims and can it be used for predicting Rejections/Acceptances using markedness. Following questions arise here:
+ 
+ (1) Does this depend on the kind of corpus? (I think yes)
+ (2) Does this depend on the era the corpus was created ? (I think yes, diff eras have diff speech styles)
+ (3) Does this depend on the relationship between the speakers in conversation ? (I think yes)
+ 
+ For example, when I was at the PIT Airport McDonald's last month, the following happened:
+ 
+ Me: Could I get the egg-bagel please ?
+ McD guy: No, you can't! we are serving lunch now.
+ 
+ This doesnt seem marked to me (despite of being a rejection?) as the response was immediate!
+ 
+ Hi, I am Manaal Faruqui a 1st year LTI PhD student.
+
+ I think Discourse analysis is a very interesting topic in the sense that it is poles apart in the humans and computers approach it. As humans, everything about discourse is very obvious and seems easy and natural to us but for computers understanding the difference in the speeches of two different speakers speaking alternatively is

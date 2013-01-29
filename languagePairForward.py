@@ -25,6 +25,8 @@ class LanguagePairForward:
         self.getInitialWordAlignedClusCount()
         self.getWordEdgeCount()
         
+        sys.stderr.write("\nFinished making the forward lang pair object")
+        
         return
         
     def assignReverseLanguagePair(self, reverseLangPair):
