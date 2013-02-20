@@ -2,12 +2,16 @@ import sys
 from collections import Counter
 from operator import itemgetter
 
-def printClusters(outputFileName, en, de, fr):
+def printClusters(outputFileName, en, de, fr, fourth, fifth):
     
     outFileEn = open(outputFileName+'.en', 'w')
     outFileDe = open(outputFileName+'.de', 'w')
     if fr != None:
         outFileFr = open(outputFileName+'.fr', 'w')
+    if fourth != None:
+        outFileFourth = open(outputFileName+'.fourth', 'w')
+    if fifth != None:
+        outFileFifth = open(outputFileName+'.fifth', 'w')
     
     #clusSimDict = {}
     #for ((clus1, wordListEn), (clus2, wordListFr)) in zip(en.wordsInClusDict.iteritems(), fr.wordsInClusDict.iteritems()):
@@ -24,6 +28,10 @@ def printClusters(outputFileName, en, de, fr):
         wordListDe = de.wordsInClusDict[clus]
         if fr != None:
             wordListFr = fr.wordsInClusDict[clus]
+        if fourth != None:
+            wordListFourth = fourth.wordsInClusDict[clus]
+        if fifth != None:
+            wordListFifth = fifth.wordsInClusDict[clus]
         
         sortedEnDict = {}
         for word in wordListEn:
@@ -49,6 +57,24 @@ def printClusters(outputFileName, en, de, fr):
             sortedFrList = []    
             for (word, val) in sorted(sortedFrDict.items(), key = itemgetter(1), reverse = True):
                 sortedFrList.append(word)
+                
+        if fourth != None:
+            sortedFourthDict = {}
+            for word in wordListFourth:
+                sortedFourthDict[word] = fourth.wordDict[word]
+        
+            sortedFourthList = []    
+            for (word, val) in sorted(sortedFourthDict.items(), key = itemgetter(1), reverse = True):
+                sortedFourthList.append(word)
+                
+        if fifth != None:
+            sortedFifthDict = {}
+            for word in wordListFifth:
+                sortedFifthDict[word] = fifth.wordDict[word]
+        
+            sortedFifthList = []    
+            for (word, val) in sorted(sortedFifthDict.items(), key = itemgetter(1), reverse = True):
+                sortedFifthList.append(word)
         
         for word in sortedEnList:
             outFileEn.write(word+'\t'+str(clus)+'\n')
@@ -59,11 +85,23 @@ def printClusters(outputFileName, en, de, fr):
         if fr != None:
             for word in sortedFrList:
                 outFileFr.write(word+'\t'+str(clus)+'\n')
+        
+        if fourth != None:
+            for word in sortedFourthList:
+                outFileFourth.write(word+'\t'+str(clus)+'\n')
+                
+        if fifth != None:
+            for word in sortedFifthList:
+                outFileFifth.write(word+'\t'+str(clus)+'\n')
                     
     outFileEn.close()
     outFileDe.close()
     if fr != None:
         outFileFr.close()
+    if fourth != None:
+        outFileFourth.close()
+    if fifth != None:
+        outFileFifth.close()
 
 def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileName, mono2FileName,\
                      enWordDict, enBigramDict, frWordDict, frBigramDict):
@@ -73,7 +111,7 @@ def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileNam
     sys.stderr.write('\nReading parallel and alignment file...')
     
     lineNum = 0
-    
+    errorLines = 0
     for wordLine, alignLine in zip(open(bilingualFileName,'r'), open(alignFileName, 'r')):
         
         lineNum += 1
@@ -105,11 +143,17 @@ def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileNam
             
         for alignments in alignLine.split():
             en, fr = alignments.split('-')
-            enWord = enWords[int(en)]
-            frWord = frWords[int(fr)]
-            alignDict[(enWord, frWord)] += 1.0
+	    try:
+              enWord = enWords[int(en)]
+              frWord = frWords[int(fr)]
+              alignDict[(enWord, frWord)] += 1.0
+            except:
+              pass
+	      errorLines += 1
+            #frWord = frWords[int(fr)]
+            #alignDict[(enWord, frWord)] += 1.0
             
-    sys.stderr.write(' Complete!\n')
+    sys.stderr.write(' Completed with '+str(errorLines)+' erroneous lines!\n')
             
     if mono1FileName != '':
         sys.stderr.write("\nReading monolingual file of L1...")        
