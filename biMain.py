@@ -156,7 +156,7 @@ def main(inputFileName, alignFileName, mono1FileName, mono2FileName, outputFileN
     runOchClustering(lang1, lang2, lang12, lang21, monoPower, biPower)
     
     # Print the clusters
-    printClusters(outputFileName, lang1, lang2, None)
+    printClusters(outputFileName, lang1, lang2, None, None, None)
     
 if __name__ == "__main__":
 
