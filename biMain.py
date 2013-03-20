@@ -25,13 +25,10 @@ def rearrangeClusters(origMono, origBi, lang, langPair, monoPower, biPower):
     currLeastBi = origBi
     
     for (word, val) in sorted(lang.wordDict.items(), key=itemgetter(1), reverse=True):
-    #for word in sorted(lang.wordDict.keys()):
         
         origClass = lang.wordToClusDict[word]
         currLeastPerplex = origMono + origBi
         tempNewClass = origClass
-        
-        #print "WORD:", word
         
         # Try shifting every word to a new cluster and caluculate perplexity
         # Ensures that every cluster has at least 1 element
@@ -54,8 +51,7 @@ def rearrangeClusters(origMono, origBi, lang, langPair, monoPower, biPower):
                     
                     possiblePerplex = tempMono + tempBi 
                     
-                    #if deltaBi <= 0 and deltaMono <=0:
-                    if possiblePerplex < currLeastPerplex: #and tempBi <= origBi:
+                    if possiblePerplex < currLeastPerplex:
                         
                         currLeastPerplex = possiblePerplex
                         tempNewClass = possibleNewClass
@@ -63,39 +59,27 @@ def rearrangeClusters(origMono, origBi, lang, langPair, monoPower, biPower):
                         currLeastBi = tempBi 
             
             if tempNewClass != origClass:
-                #print ''
-                # Compare these values with the other version of your program
-                #print word, origClass, tempNewClass
-                #print langPair.wordEdgeCount[word], langPair.edgeSumInClus[origClass], langPair.edgeSumInClus[tempNewClass]
-                #print lang.clusUniCount[origClass], lang.clusUniCount[tempNewClass]
-                
-                #print word, origClass, "->", tempNewClass
                 
                 wordsExchanged += 1
                 
                 lang.updateDistribution(word, origClass, tempNewClass)
                 if biPower != 0:
                     langPair.updateDistribution(word, origClass, tempNewClass)
-                
-                #print langPair.wordEdgeCount[word], langPair.edgeSumInClus[origClass], langPair.edgeSumInClus[tempNewClass]
-                #print lang.clusUniCount[origClass], lang.clusUniCount[tempNewClass]
-                #print lang.wordToClusDict[word]
-            
-            #print ''        
+                        
         wordsDone += 1
         if wordsDone % 1000 == 0:    
             sys.stderr.write(str(wordsDone)+' ')
 
         origMono = currLeastMono
         origBi = currLeastBi
-        
+    
     return wordsExchanged, origMono, origBi
     
 def runOchClustering(lang1, lang2, lang12, lang21, monoPower, biPower):
  
     wordsExchanged = 9999
     iterNum = 0
-    #origMono, origBi = calcPerplexity(lang1, lang2, lang12, lang21, monoPower, biPower)
+    origMono, origBi = calcPerplexity(lang1, lang2, lang12, lang21, monoPower, biPower)
     origMono, origBi = (0.0, 0.0)
     
     while ( (wordsExchanged > 0.001 * (lang1.vocabLen + lang2.vocabLen) or iterNum < 5) and wordsExchanged !=0 and iterNum <= 20):

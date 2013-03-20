@@ -2,7 +2,7 @@ import sys
 from collections import Counter
 from operator import itemgetter
 
-def printClusters(outputFileName, en, de, fr, fourth, fifth):
+def printClusters(outputFileName, en, de, fr=None, fourth=None, fifth=None):
     
     outFileEn = open(outputFileName+'.en', 'w')
     outFileDe = open(outputFileName+'.de', 'w')
@@ -12,15 +12,6 @@ def printClusters(outputFileName, en, de, fr, fourth, fifth):
         outFileFourth = open(outputFileName+'.fourth', 'w')
     if fifth != None:
         outFileFifth = open(outputFileName+'.fifth', 'w')
-    
-    #clusSimDict = {}
-    #for ((clus1, wordListEn), (clus2, wordListFr)) in zip(en.wordsInClusDict.iteritems(), fr.wordsInClusDict.iteritems()):
-    #    if enFr.common.alignedWordsInClusPairDict.has_key((clus1, clus2)):
-    #        clusSimDict[(clus1, clus2)] = 1.0*len(enFr.common.alignedWordsInClusPairDict[(clus1, clus2)])/(len(wordListEn)+len(wordListFr))
-    #    else:
-    #        clusSimDict[(clus1, clus2)] = 0.0
-    #    
-    #for (clus1, clus2), val in sorted(clusSimDict.items(), key=itemgetter(1), reverse=True):
     
     for clus in sorted(en.wordsInClusDict.keys()):
         
@@ -147,11 +138,9 @@ def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileNam
               enWord = enWords[int(en)]
               frWord = frWords[int(fr)]
               alignDict[(enWord, frWord)] += 1.0
-            except:
+        except:
               pass
-	      errorLines += 1
-            #frWord = frWords[int(fr)]
-            #alignDict[(enWord, frWord)] += 1.0
+	          errorLines += 1
             
     sys.stderr.write(' Completed with '+str(errorLines)+' erroneous lines!\n')
             
@@ -180,3 +169,44 @@ def readBilingualData(fileLength, bilingualFileName, alignFileName, mono1FileNam
         sys.stderr.write(' Complete!\n')
 
     return alignDict, enWordDict, enBigramDict, frWordDict, frBigramDict
+
+def readMonoFile(inputFileName):
+    
+    wordDict = {}
+    bigramDict = {}
+    
+    sys.stderr.write('\nReading input file...')
+    
+    for en in open(inputFileName,'r'):
+        
+        en = en.strip()
+        enWords = en.split()
+        
+        prevWord = ''
+        for word in enWords:
+            
+            if word in wordDict:
+                wordDict[word] += 1.0
+            else:
+                wordDict[word] = 1.0
+
+            if prevWord != '':
+                if (prevWord, word) in bigramDict:
+                    bigramDict[(prevWord, word)] += 1.0
+                else:
+                    bigramDict[(prevWord, word)] = 1.0
+            prevWord = word
+     
+    sys.stderr.write('  Complete!\n')
+    return wordDict, bigramDict
+    
+def readWordAlignments(inputFileName):
+    
+    sys.stderr.wrtie('\nReading alignment File...')
+    alignDict = Counter()
+    for line in open(inputFileName, 'r'):
+        enWord, frWord = line.strip().split()
+        alignDict[(enWord, frWord)] += 1
+        
+    sys.stderr.write(' Complete!\n')
+    return alignDict

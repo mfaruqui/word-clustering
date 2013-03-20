@@ -16,7 +16,6 @@ class Language:
         
         self.sizeLang = 0.0
         self.vocabLen = 0.0
-        #self.freqCutoff = freqCutoff#USE_ALL_WORDS
         
         self.wordDict = {}
         self.bigramDict = {}
@@ -28,28 +27,14 @@ class Language:
         self.clusBiCount = {}
         self.morph = None
         
-        #self.stopWordFile = stopWordFile
-        #self.stopWords = []
-        #self.considerForBi = []
-        
-    
         self.numClusters = numClusInit
         self.typeClusInit = typeClusInit
-        
-        #for key, val in wDict.iteritems():
-        #    self.wordDict[key] = wDict[key]
-        #    self.sizeLang += wDict[key]
-            
-        #for (w1, w2), val in bigramDict.iteritems():
-        #    self.bigramDict[(w1, w2)] = bigramDict[(w1, w2)]
         
         self.wordDict = dict(wDict)
         self.bigramDict = dict(bigramDict)
         self.sizeLang = sum(1.0*val for word, val in wDict.iteritems())
         self.vocabLen = 1.0*len(self.wordDict)
         
-        #self.readStopWordList()
-        #self.setWordsForBi()    
         self.formClusters()
         self.formPrevNextWordDict()
         self.initializeClusterCounts()
@@ -67,10 +52,6 @@ class Language:
     def setWordsForBi(self):
         
         if self.freqCutoff != USE_ALL_WORDS:
-            #This makes bilingual factor only consider words below a particular frequnecy
-            #for (word, val) in sorted(self.wordDict.items(), key=itemgetter(1), reverse=True):
-            #    if val <= self.freqCutoff:
-            #        self.considerForBi.append(word)
             
             for word in self.wordDict.keys():
                 if word not in string.punctuation and word not in self.stopWords:

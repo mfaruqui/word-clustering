@@ -17,12 +17,9 @@ class CommonInLangPair:
         
         tempL1 = Counter()
         tempL2 = Counter()
-        #enDict = {}
-        #frDict = {}
         
         for (w_en, w_fr), val in alignDict.iteritems():
             
-            #if w_en in self.first.considerForBi and w_fr in self.second.considerForBi:
             self.alignDict[(w_en, w_fr)] = val
             self.sumAllAlignLinks += 1.0*val
             
